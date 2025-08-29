@@ -8,7 +8,7 @@ export default defineConfig({
     {
       name: 'html-transform',
       transformIndexHtml(html) {
-        return html.replace(/%VITE_GOOGLE_MAPS_API_KEY%/g, process.env.VITE_GOOGLE_MAPS_API_KEY || '')
+        return html.replace(/%VITE_GOOGLE_MAPS_API_KEY%/g, 'AIzaSyCt3tEVN2fXMAkx8qpX1nk9G2nugAumB28')
       }
     }
   ],
@@ -27,8 +27,7 @@ export default defineConfig({
           router: ['react-router-dom'],
           supabase: ['@supabase/supabase-js'],
           ui: ['lucide-react'],
-          animations: ['gsap'],
-          maps: ['@googlemaps/js-api-loader']
+          animations: ['gsap']
         },
       },
     },

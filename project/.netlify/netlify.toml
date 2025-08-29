@@ -8,11 +8,12 @@ plugins = []
 publish = "C:\\Users\\CGX\\Downloads\\AbleGo_APP\\project\\dist"
 publishOrigin = "config"
 commandOrigin = "config"
-command = "npm ci --include=dev && npm run build"
+base = "C:\\Users\\CGX\\Downloads\\AbleGo_APP\\project"
+command = "npm install && npm run build"
 functions = "C:\\Users\\CGX\\Downloads\\AbleGo_APP\\project\\netlify\\functions"
 
 [build.environment]
-NODE_VERSION = "20"
+NODE_VERSION = "18"
 NODE_ENV = "production"
 CI = "true"
 GENERATE_SOURCEMAP = "false"
