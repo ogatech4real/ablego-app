@@ -42,10 +42,7 @@ serve(async (req) => {
 
     for (const email of pendingEmails) {
       try {
-        // Use Supabase's SMTP configuration for admin@ablego.co.uk
-        // This leverages your existing SMTP setup
-        
-        console.log('📧 SENDING EMAIL VIA SUPABASE SMTP:', {
+        console.log('📧 PROCESSING EMAIL:', {
           to: email.recipient_email,
           from: 'admin@ablego.co.uk',
           subject: email.subject,
@@ -54,11 +51,10 @@ serve(async (req) => {
           timestamp: new Date().toISOString()
         })
 
-        // Method 1: Try using Supabase's built-in email function
+        // Use real SMTP function to send email
         let emailSent = false
         
         try {
-          // Use Supabase's direct email sending if available
           const { data: emailResult, error: emailError } = await supabaseClient.functions.invoke('send-email-smtp', {
             body: {
               to: email.recipient_email,
@@ -68,19 +64,20 @@ serve(async (req) => {
             }
           })
 
-          if (!emailError) {
+          if (!emailError && emailResult?.message) {
             emailSent = true
-            console.log('✅ Email sent via Supabase SMTP function')
+            console.log('✅ Email sent successfully via SMTP:', email.recipient_email)
           } else {
-            console.log('❌ SMTP function failed:', emailError.message)
+            console.log('❌ SMTP function failed:', emailError?.message || 'Unknown error')
           }
         } catch (smtpError) {
-          console.log('❌ SMTP function not available:', smtpError.message)
+          console.log('❌ SMTP function error:', smtpError.message)
         }
 
-        // Method 2: Fallback to auth invite method (less ideal but works)
+        // Fallback: Try Supabase auth invite method if SMTP fails
         if (!emailSent) {
           try {
+            console.log('🔄 Trying fallback email method...')
             const { data: inviteResult, error: inviteError } = await supabaseClient.auth.admin.inviteUserByEmail(
               email.recipient_email,
               {
@@ -98,12 +95,12 @@ serve(async (req) => {
 
             if (!inviteError) {
               emailSent = true
-              console.log('✅ Email sent via Supabase invite method')
+              console.log('✅ Email sent via fallback method:', email.recipient_email)
             } else {
-              console.log('❌ Invite method failed:', inviteError.message)
+              console.log('❌ Fallback method failed:', inviteError.message)
             }
           } catch (inviteError) {
-            console.log('❌ Invite method error:', inviteError.message)
+            console.log('❌ Fallback method error:', inviteError.message)
           }
         }
 
@@ -131,23 +128,23 @@ serve(async (req) => {
               recipient: email.recipient_email,
               type: email.notification_type,
               subject: email.subject,
-              method: 'supabase_smtp'
+              method: 'real_smtp'
             })
           }
         } else {
           results.push({
             email_id: email.id,
             success: false,
-            error: 'All email sending methods failed'
+            recipient: email.recipient_email,
+            error: 'All email methods failed'
           })
         }
-
       } catch (emailError) {
-        console.error('Email sending failed:', emailError)
+        console.error('Error processing email:', emailError)
         results.push({
           email_id: email.id,
           success: false,
-          error: emailError instanceof Error ? emailError.message : 'Unknown error'
+          error: emailError.message
         })
       }
     }

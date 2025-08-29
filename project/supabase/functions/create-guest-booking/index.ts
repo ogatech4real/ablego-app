@@ -211,6 +211,8 @@ serve(async (req) => {
 
     // Send confirmation email
     try {
+      const trackingUrl = `${Deno.env.get('SITE_URL') || 'https://ablegobefore.netlify.app'}/booking-status/${accessToken}`
+      
       await supabaseClient.functions.invoke('send-booking-confirmation', {
         body: {
           booking_id: guestBooking.id,
@@ -219,9 +221,22 @@ serve(async (req) => {
           guest_phone: request.guest_phone,
           payment_method: request.booking_data.payment_method,
           access_token: accessToken,
-          booking_details: guestBooking
+          tracking_url: trackingUrl,
+          booking_details: {
+            pickup_address: guestBooking.pickup_address,
+            dropoff_address: guestBooking.dropoff_address,
+            pickup_time: guestBooking.pickup_time,
+            fare_estimate: guestBooking.fare_estimate,
+            support_workers_count: guestBooking.support_workers_count,
+            vehicle_features: guestBooking.vehicle_features,
+            special_requirements: guestBooking.special_requirements,
+            booking_type: guestBooking.booking_type,
+            lead_time_hours: guestBooking.lead_time_hours
+          }
         }
       })
+      
+      console.log('Booking confirmation email sent successfully to:', request.guest_email)
     } catch (emailError) {
       console.error('Email sending failed (non-critical):', emailError)
       // Don't fail the booking for email errors

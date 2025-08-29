@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,23 +33,16 @@ serve(async (req) => {
       )
     }
 
-    // Use Supabase's configured SMTP settings
-    // This leverages the SMTP configuration you've set up for admin@ablego.co.uk
-    
-    // Method 1: Use Deno's built-in SMTP if Supabase exposes SMTP credentials
-    // Note: You'll need to configure these environment variables in Supabase
+    // SMTP Configuration from environment variables
     const smtpConfig = {
-      hostname: Deno.env.get('SMTP_HOST') || 'smtp.gmail.com', // or your SMTP provider
+      hostname: Deno.env.get('SMTP_HOST') || 'smtp.gmail.com',
       port: parseInt(Deno.env.get('SMTP_PORT') || '587'),
       username: Deno.env.get('SMTP_USERNAME') || 'admin@ablego.co.uk',
-      password: Deno.env.get('SMTP_PASSWORD') || '', // Your SMTP password
+      password: Deno.env.get('SMTP_PASSWORD') || '',
       tls: true
     }
 
-    // For now, we'll simulate the email sending and log it
-    // In production, you would integrate with your actual SMTP configuration
-    
-    console.log('📧 SENDING EMAIL VIA SUPABASE SMTP:', {
+    console.log('📧 SENDING EMAIL VIA REAL SMTP:', {
       to: emailData.to,
       from: emailData.from,
       subject: emailData.subject,
@@ -57,13 +51,7 @@ serve(async (req) => {
       timestamp: new Date().toISOString()
     })
 
-    // Simulate email sending delay
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    // In production, you would use a proper SMTP library like:
-    /*
-    import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-    
+    // Create SMTP client and send email
     const client = new SMTPClient({
       connection: {
         hostname: smtpConfig.hostname,
@@ -76,28 +64,48 @@ serve(async (req) => {
       },
     });
 
-    await client.send({
-      from: emailData.from,
-      to: emailData.to,
-      subject: emailData.subject,
-      content: emailData.text || 'Please view this email in HTML format',
-      html: emailData.html,
-    });
-
-    await client.close();
-    */
-
-    return new Response(
-      JSON.stringify({ 
-        message: 'Email sent successfully via Supabase SMTP',
-        recipient: emailData.to,
+    try {
+      await client.send({
+        from: emailData.from,
+        to: emailData.to,
         subject: emailData.subject,
-        method: 'supabase_smtp'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    )
+        content: emailData.text || 'Please view this email in HTML format',
+        html: emailData.html,
+      });
+
+      await client.close();
+      
+      console.log('✅ Email sent successfully to:', emailData.to)
+
+      return new Response(
+        JSON.stringify({ 
+          message: 'Email sent successfully via SMTP',
+          recipient: emailData.to,
+          subject: emailData.subject,
+          method: 'real_smtp',
+          timestamp: new Date().toISOString()
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+
+    } catch (smtpError) {
+      console.error('❌ SMTP sending failed:', smtpError)
+      await client.close();
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to send email via SMTP',
+          details: smtpError.message,
+          recipient: emailData.to
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
 
   } catch (error) {
     console.error('SMTP email error:', error)
