@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ablego.co.uk/sitemap.xml
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /register/

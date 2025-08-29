@@ -1,0 +1,24 @@
+{
+  "name": "AbleGo - Inclusive Transport",
+  "short_name": "AbleGo",
+  "description": "Safe, supportive transport services with trained companions",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3B82F6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/AbleGo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/AbleGo.png", 
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
