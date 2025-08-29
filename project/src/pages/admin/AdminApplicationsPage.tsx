@@ -20,6 +20,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useAdmin } from '../../hooks/useAdmin';
 import { supabase } from '../../lib/supabase';
 import { scrollToActionZone } from '../../utils/scrollUtils';
 
@@ -47,6 +48,7 @@ interface ApplicationData {
 
 const AdminApplicationsPage: React.FC = () => {
   const { isAdmin } = useAuth();
+  const { getDriverApplications, getSupportWorkerApplications } = useAdmin();
   const [applications, setApplications] = useState<ApplicationData[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -78,73 +80,73 @@ const AdminApplicationsPage: React.FC = () => {
     try {
       setLoading(true);
       
-      // Load both driver and support worker applications
-      const driverQuery = supabase
-        .from('driver_applications')
-        .select('*', { count: 'exact' })
-        .order('submitted_at', { ascending: false });
+      let allApplications: ApplicationData[] = [];
+      let totalCount = 0;
 
-      const supportWorkerQuery = supabase
-        .from('support_worker_applications')
-        .select('*', { count: 'exact' })
-        .order('submitted_at', { ascending: false });
-
-      // Apply filters
-      if (filters.type === 'driver') {
-        const { data: driverData, error: driverError, count } = await driverQuery
-          .range((page - 1) * 20, page * 20 - 1);
-        
-        if (!driverError) {
-          setApplications(driverData || []);
-          setPagination({
-            page,
-            limit: 20,
-            total: count || 0,
-            pages: Math.ceil((count || 0) / 20)
-          });
+      // Load driver applications
+      if (filters.type === '' || filters.type === 'driver') {
+        const driverResult = await getDriverApplications(page, 20);
+        if (!driverResult.error && driverResult.data) {
+          const driverApps = driverResult.data.map(app => ({
+            ...app,
+            application_type: 'driver',
+            submitted_at: app.created_at || app.submitted_at,
+            full_name: app.profiles?.name || app.full_name,
+            email: app.profiles?.email || app.email,
+            phone: app.profiles?.phone || app.phone
+          }));
+          allApplications = [...allApplications, ...driverApps];
+          totalCount += driverResult.pagination.total;
         }
-      } else if (filters.type === 'support_worker') {
-        const { data: supportData, error: supportError, count } = await supportWorkerQuery
-          .range((page - 1) * 20, page * 20 - 1);
-        
-        if (!supportError) {
-          setApplications(supportData || []);
-          setPagination({
-            page,
-            limit: 20,
-            total: count || 0,
-            pages: Math.ceil((count || 0) / 20)
-          });
-        }
-      } else {
-        // Load both types
-        const [driverResult, supportResult] = await Promise.all([
-          driverQuery,
-          supportWorkerQuery
-        ]);
-
-        const combinedData = [
-          ...(driverResult.data || []),
-          ...(supportResult.data || [])
-        ].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
-
-        const totalCount = (driverResult.count || 0) + (supportResult.count || 0);
-        
-        // Apply pagination to combined results
-        const startIndex = (page - 1) * 20;
-        const endIndex = startIndex + 20;
-        const paginatedData = combinedData.slice(startIndex, endIndex);
-
-        setApplications(paginatedData);
-        setPagination({
-          page,
-          limit: 20,
-          total: totalCount,
-          pages: Math.ceil(totalCount / 20)
-        });
       }
 
+      // Load support worker applications
+      if (filters.type === '' || filters.type === 'support_worker') {
+        const supportResult = await getSupportWorkerApplications(page, 20);
+        if (!supportResult.error && supportResult.data) {
+          const supportApps = supportResult.data.map(app => ({
+            ...app,
+            application_type: 'support_worker',
+            submitted_at: app.created_at || app.submitted_at,
+            full_name: app.profiles?.name || app.full_name,
+            email: app.profiles?.email || app.email,
+            phone: app.profiles?.phone || app.phone
+          }));
+          allApplications = [...allApplications, ...supportApps];
+          totalCount += supportResult.pagination.total;
+        }
+      }
+
+      // Sort by submission date
+      allApplications.sort((a, b) => 
+        new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
+      );
+
+      // Apply search filter
+      if (filters.search) {
+        allApplications = allApplications.filter(app =>
+          app.full_name?.toLowerCase().includes(filters.search.toLowerCase()) ||
+          app.email?.toLowerCase().includes(filters.search.toLowerCase()) ||
+          app.phone?.includes(filters.search)
+        );
+      }
+
+      // Apply status filter
+      if (filters.status) {
+        allApplications = allApplications.filter(app => app.status === filters.status);
+      }
+
+      setApplications(allApplications);
+      setPagination({
+        page,
+        limit: 20,
+        total: totalCount,
+        pages: Math.ceil(totalCount / 20)
+      });
       setCurrentPage(page);
+
+      // Scroll to show updated applications list
+      setTimeout(() => scrollToActionZone('.applications-table, table'), 100);
     } catch (error) {
       console.error('Error loading applications:', error);
     } finally {

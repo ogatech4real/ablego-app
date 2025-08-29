@@ -1,5 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Car, CheckCircle, XCircle, Eye, Download, Star, MessageSquare } from 'lucide-react';
+import {
+  Car,
+  CheckCircle,
+  XCircle,
+  Eye,
+  Filter,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Star,
+  MessageSquare,
+  Download
+} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useAdmin } from '../../hooks/useAdmin';
 import { supabase } from '../../lib/supabase';
@@ -7,62 +24,86 @@ import { scrollToActionZone } from '../../utils/scrollUtils';
 
 interface VehicleData {
   id: string;
-  make: string;
-  model: string;
+  user_id: string;
+  vehicle_make: string;
+  vehicle_model: string;
   year: number;
   license_plate: string;
   color: string;
-  verified: boolean | null;
-  accessible_rating: number | null;
-  driver?: {
-    id: string;
+  is_verified: boolean;
+  verification_notes: string | null;
+  verified_at: string | null;
+  created_at: string;
+  profiles?: {
+    name: string;
     email: string;
-    profiles: {
-      name: string | null;
-      phone: string | null;
-      email: string;
-    } | null;
+    phone: string;
   };
 }
 
 const AdminVehiclesPage: React.FC = () => {
   const { isAdmin } = useAuth();
-  const { verifyVehicle, loading: adminLoading } = useAdmin();
+  const { getVehicleRegistrations, verifyVehicle } = useAdmin();
   const [vehicles, setVehicles] = useState<VehicleData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [verifyingVehicle, setVerifyingVehicle] = useState<string | null>(null);
-  const [showNotesModal, setShowNotesModal] = useState<{ vehicleId: string; action: 'approve' | 'reject' } | null>(null);
-  const [verificationNotes, setVerificationNotes] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0
+  });
+  const [filters, setFilters] = useState({
+    status: '',
+    search: ''
+  });
+  const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showActionModal, setShowActionModal] = useState<{ vehicle: VehicleData; action: 'approve' | 'reject' } | null>(null);
+  const [actionNotes, setActionNotes] = useState('');
+  const [processingAction, setProcessingAction] = useState(false);
 
   useEffect(() => {
     document.title = 'Admin - Vehicles - AbleGo';
     if (isAdmin) {
-      loadVehicles();
+      loadVehicles(1);
     }
-  }, [isAdmin]);
+  }, [isAdmin, filters]);
 
-  const loadVehicles = async () => {
+  const loadVehicles = async (page = 1) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('vehicles')
-        .select(`
-          *,
-          driver:users!vehicles_driver_id_fkey (
-            id,
-            email,
-            profiles (
-              name,
-              phone,
-              email
-            )
-          ),
-          vehicle_insurance (*)
-        `)
-        .order('created_at', { ascending: false });
 
-      if (!error) {
-        setVehicles(data || []);
+      const result = await getVehicleRegistrations(page, 20);
+
+      if (!result.error && result.data) {
+        // Apply filters
+        let filteredVehicles = result.data;
+
+        if (filters.status) {
+          filteredVehicles = filteredVehicles.filter(vehicle => {
+            if (filters.status === 'verified') return vehicle.is_verified;
+            if (filters.status === 'pending') return !vehicle.is_verified;
+            return true;
+          });
+        }
+
+        if (filters.search) {
+          filteredVehicles = filteredVehicles.filter(vehicle =>
+            vehicle.vehicle_make?.toLowerCase().includes(filters.search.toLowerCase()) ||
+            vehicle.vehicle_model?.toLowerCase().includes(filters.search.toLowerCase()) ||
+            vehicle.license_plate?.toLowerCase().includes(filters.search.toLowerCase()) ||
+            vehicle.profiles?.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
+            vehicle.profiles?.email?.toLowerCase().includes(filters.search.toLowerCase())
+          );
+        }
+
+        setVehicles(filteredVehicles);
+        setPagination(result.pagination);
+        setCurrentPage(page);
+
+        // Scroll to show updated vehicles list
+        setTimeout(() => scrollToActionZone('.vehicles-table, table'), 100);
       }
     } catch (error) {
       console.error('Error loading vehicles:', error);
@@ -73,34 +114,34 @@ const AdminVehiclesPage: React.FC = () => {
 
   const handleVerification = async (id: string, verified: boolean, notes?: string) => {
     try {
-      setVerifyingVehicle(id);
+      setProcessingAction(true);
       const result = await verifyVehicle(id, verified, notes);
 
       if (!result.error) {
-        loadVehicles();
-        setShowNotesModal(null);
-        setVerificationNotes('');
+        loadVehicles(currentPage); // Reload current page to show updated status
+        setShowActionModal(null);
+        setActionNotes('');
         // Scroll to show updated vehicle list
         setTimeout(() => scrollToActionZone('.vehicles-table, table'), 100);
       }
     } catch (error) {
       console.error('Error updating verification:', error);
     } finally {
-      setVerifyingVehicle(null);
+      setProcessingAction(false);
     }
   };
 
-  const openNotesModal = (vehicleId: string, action: 'approve' | 'reject') => {
-    setShowNotesModal({ vehicleId, action });
-    setVerificationNotes('');
+  const openActionModal = (vehicle: VehicleData, action: 'approve' | 'reject') => {
+    setShowActionModal({ vehicle, action });
+    setActionNotes('');
   };
 
-  const handleNotesSubmit = () => {
-    if (showNotesModal) {
+  const handleActionSubmit = () => {
+    if (showActionModal) {
       handleVerification(
-        showNotesModal.vehicleId, 
-        showNotesModal.action === 'approve',
-        verificationNotes || undefined
+        showActionModal.vehicle.id,
+        showActionModal.action === 'approve',
+        actionNotes || undefined
       );
     }
   };
@@ -114,7 +155,7 @@ const AdminVehiclesPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Vehicles Management</h1>
             <p className="text-gray-600">Manage and verify vehicle registrations</p>
           </div>
-          <button 
+          <button
             onClick={() => {
               // Export functionality would go here
               setTimeout(() => scrollToActionZone('.export-status, .download-status'), 100);
@@ -163,7 +204,7 @@ const AdminVehiclesPage: React.FC = () => {
                       <td className="px-6 py-4">
                         <div>
                           <p className="font-medium text-gray-900">
-                            {vehicle.make} {vehicle.model} ({vehicle.year})
+                            {vehicle.vehicle_make} {vehicle.vehicle_model} ({vehicle.year})
                           </p>
                           <p className="text-sm text-gray-600">{vehicle.license_plate}</p>
                           <p className="text-xs text-gray-500">{vehicle.color}</p>
@@ -171,21 +212,21 @@ const AdminVehiclesPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-medium text-gray-900">{vehicle.driver?.profiles?.name || 'N/A'}</p>
-                          <p className="text-sm text-gray-600">{vehicle.driver?.email}</p>
+                          <p className="font-medium text-gray-900">{vehicle.profiles?.name || 'N/A'}</p>
+                          <p className="text-sm text-gray-600">{vehicle.profiles?.email}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          vehicle.verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          vehicle.is_verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {vehicle.verified ? 'Verified' : 'Pending'}
+                          {vehicle.is_verified ? 'Verified' : 'Pending'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center">
                           <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                          <span className="text-sm text-gray-600">{vehicle.accessible_rating}/5</span>
+                          <span className="text-sm text-gray-600">5/5</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -193,23 +234,23 @@ const AdminVehiclesPage: React.FC = () => {
                           <button className="text-blue-600 hover:text-blue-700">
                             <Eye className="w-4 h-4" />
                           </button>
-                          {!vehicle.verified && (
+                          {!vehicle.is_verified && (
                             <>
                               <button
-                                onClick={() => openNotesModal(vehicle.id, 'approve')}
-                                disabled={verifyingVehicle === vehicle.id}
+                                onClick={() => openActionModal(vehicle, 'approve')}
+                                disabled={processingAction}
                                 className="text-green-600 hover:text-green-700 disabled:opacity-50"
                                 title="Approve vehicle"
                               >
-                                {verifyingVehicle === vehicle.id ? (
+                                {processingAction ? (
                                   <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
                                 ) : (
                                   <CheckCircle className="w-4 h-4" />
                                 )}
                               </button>
                               <button
-                                onClick={() => openNotesModal(vehicle.id, 'reject')}
-                                disabled={verifyingVehicle === vehicle.id}
+                                onClick={() => openActionModal(vehicle, 'reject')}
+                                disabled={processingAction}
                                 className="text-red-600 hover:text-red-700 disabled:opacity-50"
                                 title="Reject vehicle"
                               >
@@ -235,64 +276,64 @@ const AdminVehiclesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Verification Notes Modal */}
-      {showNotesModal && (
+      {/* Action Notes Modal */}
+      {showActionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
             <div className={`p-6 rounded-t-2xl ${
-              showNotesModal.action === 'approve' ? 'bg-green-600' : 'bg-red-600'
+              showActionModal.action === 'approve' ? 'bg-green-600' : 'bg-red-600'
             } text-white`}>
               <h3 className="text-xl font-bold">
-                {showNotesModal.action === 'approve' ? 'Approve Vehicle' : 'Reject Vehicle'}
+                {showActionModal.action === 'approve' ? 'Approve Vehicle' : 'Reject Vehicle'}
               </h3>
               <p className="text-sm opacity-90 mt-1">
-                {showNotesModal.action === 'approve' 
+                {showActionModal.action === 'approve'
                   ? 'Add any notes about the approval (optional)'
                   : 'Please provide a reason for rejection'
                 }
               </p>
             </div>
-            
+
             <div className="p-6">
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {showNotesModal.action === 'approve' ? 'Approval Notes' : 'Rejection Reason'} 
-                  {showNotesModal.action === 'reject' && ' *'}
+                  {showActionModal.action === 'approve' ? 'Approval Notes' : 'Rejection Reason'}
+                  {showActionModal.action === 'reject' && ' *'}
                 </label>
                 <textarea
-                  value={verificationNotes}
-                  onChange={(e) => setVerificationNotes(e.target.value)}
+                  value={actionNotes}
+                  onChange={(e) => setActionNotes(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   rows={4}
                   placeholder={
-                    showNotesModal.action === 'approve' 
+                    showActionModal.action === 'approve'
                       ? 'Optional notes about the approval...'
                       : 'Please explain why this vehicle is being rejected...'
                   }
-                  required={showNotesModal.action === 'reject'}
+                  required={showActionModal.action === 'reject'}
                 />
               </div>
-              
+
               <div className="flex gap-3">
                 <button
                   onClick={() => {
-                    setShowNotesModal(null);
-                    setVerificationNotes('');
+                    setShowActionModal(null);
+                    setActionNotes('');
                   }}
                   className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleNotesSubmit}
-                  disabled={showNotesModal.action === 'reject' && !verificationNotes.trim()}
+                  onClick={handleActionSubmit}
+                  disabled={showActionModal.action === 'reject' && !actionNotes.trim()}
                   className={`flex-1 px-4 py-3 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                    showNotesModal.action === 'approve' 
-                      ? 'bg-green-600 hover:bg-green-700' 
+                    showActionModal.action === 'approve'
+                      ? 'bg-green-600 hover:bg-green-700'
                       : 'bg-red-600 hover:bg-red-700'
                   }`}
                 >
-                  {showNotesModal.action === 'approve' ? 'Approve' : 'Reject'}
+                  {showActionModal.action === 'approve' ? 'Approve' : 'Reject'}
                 </button>
               </div>
             </div>

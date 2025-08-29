@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { db } from '../lib/supabase';
+import { db } from '../lib/database';
 import { useAuth } from './useAuth';
 
 interface AdminStats {
@@ -43,7 +43,7 @@ export const useAdmin = () => {
 
       setStats({
         totalUsers: data?.total_riders + data?.total_drivers + data?.total_support_workers || 0,
-        totalBookings: data?.month_bookings || 0,
+        totalBookings: data?.total_bookings || 0,
         totalRevenue: data?.month_revenue || 0,
         activeTrips: data?.active_trips || 0,
         pendingVerifications: 0 // This would need to be calculated
@@ -104,29 +104,100 @@ export const useAdmin = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase.rpc('get_all_bookings_for_admin', {
-        page_num: page,
-        page_size: limit,
-        status_filter: filters?.status || null,
-        date_from: filters?.dateFrom || null,
-        date_to: filters?.dateTo || null
-      });
-
-      if (error) {
-        setError(error.message);
-        return {
-          data: [],
-          pagination: { page: 1, limit, total: 0, pages: 0 },
-          error
-        };
-      }
-
-      const result = {
-        data: data?.bookings || [],
-        pagination: data?.pagination || { page: 1, limit, total: 0, pages: 0 },
-        error: null
+      const result = await db.getAllBookings(page, limit, filters);
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      return {
+        data: [],
+        pagination: { page: 1, limit, total: 0, pages: 0 },
+        error: { message: errorMessage }
       };
-      
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getDriverApplications = async (
+    page = 1, 
+    limit = 50
+  ): Promise<PaginatedResponse<any>> => {
+    if (!isAdmin) {
+      return {
+        data: [],
+        pagination: { page: 1, limit, total: 0, pages: 0 },
+        error: { message: 'Admin access required' }
+      };
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await db.getDriverApplications(page, limit);
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      return {
+        data: [],
+        pagination: { page: 1, limit, total: 0, pages: 0 },
+        error: { message: errorMessage }
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSupportWorkerApplications = async (
+    page = 1, 
+    limit = 50
+  ): Promise<PaginatedResponse<any>> => {
+    if (!isAdmin) {
+      return {
+        data: [],
+        pagination: { page: 1, limit, total: 0, pages: 0 },
+        error: { message: 'Admin access required' }
+      };
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await db.getSupportWorkerApplications(page, limit);
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      return {
+        data: [],
+        pagination: { page: 1, limit, total: 0, pages: 0 },
+        error: { message: errorMessage }
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getVehicleRegistrations = async (
+    page = 1, 
+    limit = 50
+  ): Promise<PaginatedResponse<any>> => {
+    if (!isAdmin) {
+      return {
+        data: [],
+        pagination: { page: 1, limit, total: 0, pages: 0 },
+        error: { message: 'Admin access required' }
+      };
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await db.getVehicleRegistrations(page, limit);
       return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -229,6 +300,9 @@ export const useAdmin = () => {
     loadDashboardStats,
     getAllUsers,
     getAllBookings,
+    getDriverApplications,
+    getSupportWorkerApplications,
+    getVehicleRegistrations,
     promoteUserToAdmin,
     verifyVehicle,
     verifySupportWorker

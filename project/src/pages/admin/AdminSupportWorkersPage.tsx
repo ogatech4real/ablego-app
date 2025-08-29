@@ -1,5 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Users, CheckCircle, XCircle, Eye, Download, MessageSquare } from 'lucide-react';
+import {
+  Users,
+  CheckCircle,
+  XCircle,
+  Eye,
+  Filter,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Star,
+  MessageSquare,
+  Download
+} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useAdmin } from '../../hooks/useAdmin';
 import { supabase } from '../../lib/supabase';
@@ -7,56 +24,84 @@ import { scrollToActionZone } from '../../utils/scrollUtils';
 
 interface SupportWorkerData {
   id: string;
-  verified: boolean | null;
-  experience_years: number | null;
-  hourly_rate: number | null;
-  dbs_uploaded: boolean | null;
-  specializations: string[] | null;
-  profile?: {
-    name: string | null;
+  user_id: string;
+  experience_years: number;
+  desired_hourly_rate: number;
+  specializations: string[];
+  bio: string;
+  is_verified: boolean;
+  verification_notes: string | null;
+  verified_at: string | null;
+  created_at: string;
+  profiles?: {
+    name: string;
     email: string;
+    phone: string;
   };
 }
 
 const AdminSupportWorkersPage: React.FC = () => {
   const { isAdmin } = useAuth();
-  const { verifySupportWorker } = useAdmin();
+  const { getSupportWorkerApplications, verifySupportWorker } = useAdmin();
   const [supportWorkers, setSupportWorkers] = useState<SupportWorkerData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [verifyingWorker, setVerifyingWorker] = useState<string | null>(null);
-  const [showNotesModal, setShowNotesModal] = useState<{ workerId: string; action: 'approve' | 'reject' } | null>(null);
-  const [verificationNotes, setVerificationNotes] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0
+  });
+  const [filters, setFilters] = useState({
+    status: '',
+    search: ''
+  });
+  const [selectedSupportWorker, setSelectedSupportWorker] = useState<SupportWorkerData | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showActionModal, setShowActionModal] = useState<{ supportWorker: SupportWorkerData; action: 'approve' | 'reject' } | null>(null);
+  const [actionNotes, setActionNotes] = useState('');
+  const [processingAction, setProcessingAction] = useState(false);
 
   useEffect(() => {
     document.title = 'Admin - Support Workers - AbleGo';
     if (isAdmin) {
-      loadSupportWorkers();
+      loadSupportWorkers(1);
     }
-  }, [isAdmin]);
+  }, [isAdmin, filters]);
 
-  const loadSupportWorkers = async () => {
+  const loadSupportWorkers = async (page = 1) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('support_workers')
-        .select(`
-          *,
-          user:users!user_id (
-            id,
-            email,
-            role
-          ),
-          user_profile:profiles!user_id (
-            name,
-            phone,
-            email
-          ),
-          certifications (*)
-        `)
-        .order('created_at', { ascending: false });
 
-      if (!error) {
-        setSupportWorkers(data || []);
+      const result = await getSupportWorkerApplications(page, 20);
+
+      if (!result.error && result.data) {
+        // Apply filters
+        let filteredSupportWorkers = result.data;
+
+        if (filters.status) {
+          filteredSupportWorkers = filteredSupportWorkers.filter(worker => {
+            if (filters.status === 'verified') return worker.is_verified;
+            if (filters.status === 'pending') return !worker.is_verified;
+            return true;
+          });
+        }
+
+        if (filters.search) {
+          filteredSupportWorkers = filteredSupportWorkers.filter(worker =>
+            worker.profiles?.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
+            worker.profiles?.email?.toLowerCase().includes(filters.search.toLowerCase()) ||
+            worker.profiles?.phone?.includes(filters.search) ||
+            worker.specializations?.some(spec => spec.toLowerCase().includes(filters.search.toLowerCase()))
+          );
+        }
+
+        setSupportWorkers(filteredSupportWorkers);
+        setPagination(result.pagination);
+        setCurrentPage(page);
+
+        // Scroll to show updated support workers list
+        setTimeout(() => scrollToActionZone('.support-workers-table, table'), 100);
       }
     } catch (error) {
       console.error('Error loading support workers:', error);
@@ -67,34 +112,34 @@ const AdminSupportWorkersPage: React.FC = () => {
 
   const handleVerification = async (id: string, verified: boolean, notes?: string) => {
     try {
-      setVerifyingWorker(id);
+      setProcessingAction(true);
       const result = await verifySupportWorker(id, verified, notes);
 
       if (!result.error) {
-        loadSupportWorkers();
-        setShowNotesModal(null);
-        setVerificationNotes('');
+        loadSupportWorkers(currentPage); // Reload current page
+        setShowActionModal(null);
+        setActionNotes('');
         // Scroll to show updated support workers list
         setTimeout(() => scrollToActionZone('.support-workers-table, table'), 100);
       }
     } catch (error) {
       console.error('Error updating verification:', error);
     } finally {
-      setVerifyingWorker(null);
+      setProcessingAction(false);
     }
   };
 
-  const openNotesModal = (workerId: string, action: 'approve' | 'reject') => {
-    setShowNotesModal({ workerId, action });
-    setVerificationNotes('');
+  const openActionModal = (worker: SupportWorkerData, action: 'approve' | 'reject') => {
+    setShowActionModal({ supportWorker: worker, action });
+    setActionNotes('');
   };
 
-  const handleNotesSubmit = () => {
-    if (showNotesModal) {
+  const handleActionSubmit = () => {
+    if (showActionModal) {
       handleVerification(
-        showNotesModal.workerId, 
-        showNotesModal.action === 'approve',
-        verificationNotes || undefined
+        showActionModal.supportWorker.id,
+        showActionModal.action === 'approve',
+        actionNotes || undefined
       );
     }
   };
@@ -108,7 +153,7 @@ const AdminSupportWorkersPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Support Workers Management</h1>
             <p className="text-gray-600">Manage and verify support worker applications</p>
           </div>
-          <button 
+          <button
             onClick={() => {
               // Export functionality would go here
               setTimeout(() => scrollToActionZone('.export-status, .download-status'), 100);
@@ -156,8 +201,8 @@ const AdminSupportWorkersPage: React.FC = () => {
                     <tr key={worker.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-medium text-gray-900">{worker.user_profile?.name || 'N/A'}</p>
-                          <p className="text-sm text-gray-600">{worker.user_profile?.email}</p>
+                          <p className="font-medium text-gray-900">{worker.profiles?.name || 'N/A'}</p>
+                          <p className="text-sm text-gray-600">{worker.profiles?.email}</p>
                           <p className="text-xs text-gray-500">
                             {worker.specializations?.join(', ') || 'General support'}
                           </p>
@@ -166,41 +211,41 @@ const AdminSupportWorkersPage: React.FC = () => {
                       <td className="px-6 py-4">
                         <p className="text-sm text-gray-600">{worker.experience_years} years</p>
                         <p className="text-xs text-gray-500">
-                          DBS: {worker.dbs_uploaded ? 'Uploaded' : 'Missing'}
+                          DBS: {worker.is_verified ? 'Verified' : 'Pending'}
                         </p>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          worker.verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          worker.is_verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {worker.verified ? 'Verified' : 'Pending'}
+                          {worker.is_verified ? 'Verified' : 'Pending'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm text-gray-600">£{worker.hourly_rate}/hour</p>
+                        <p className="text-sm text-gray-600">£{worker.desired_hourly_rate}/hour</p>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
                           <button className="text-blue-600 hover:text-blue-700">
                             <Eye className="w-4 h-4" />
                           </button>
-                          {!worker.verified && (
+                          {!worker.is_verified && (
                             <>
                               <button
-                                onClick={() => openNotesModal(worker.id, 'approve')}
-                                disabled={verifyingWorker === worker.id}
+                                onClick={() => openActionModal(worker, 'approve')}
+                                disabled={processingAction}
                                 className="text-green-600 hover:text-green-700 disabled:opacity-50"
                                 title="Approve support worker"
                               >
-                                {verifyingWorker === worker.id ? (
+                                {processingAction ? (
                                   <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
                                 ) : (
                                   <CheckCircle className="w-4 h-4" />
                                 )}
                               </button>
                               <button
-                                onClick={() => openNotesModal(worker.id, 'reject')}
-                                disabled={verifyingWorker === worker.id}
+                                onClick={() => openActionModal(worker, 'reject')}
+                                disabled={processingAction}
                                 className="text-red-600 hover:text-red-700 disabled:opacity-50"
                                 title="Reject support worker"
                               >
@@ -226,64 +271,64 @@ const AdminSupportWorkersPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Verification Notes Modal */}
-      {showNotesModal && (
+      {/* Action Notes Modal */}
+      {showActionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
             <div className={`p-6 rounded-t-2xl ${
-              showNotesModal.action === 'approve' ? 'bg-green-600' : 'bg-red-600'
+              showActionModal.action === 'approve' ? 'bg-green-600' : 'bg-red-600'
             } text-white`}>
               <h3 className="text-xl font-bold">
-                {showNotesModal.action === 'approve' ? 'Approve Support Worker' : 'Reject Support Worker'}
+                {showActionModal.action === 'approve' ? 'Approve Support Worker' : 'Reject Support Worker'}
               </h3>
               <p className="text-sm opacity-90 mt-1">
-                {showNotesModal.action === 'approve' 
+                {showActionModal.action === 'approve'
                   ? 'Add any notes about the approval (optional)'
                   : 'Please provide a reason for rejection'
                 }
               </p>
             </div>
-            
+
             <div className="p-6">
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {showNotesModal.action === 'approve' ? 'Approval Notes' : 'Rejection Reason'} 
-                  {showNotesModal.action === 'reject' && ' *'}
+                  {showActionModal.action === 'approve' ? 'Approval Notes' : 'Rejection Reason'}
+                  {showActionModal.action === 'reject' && ' *'}
                 </label>
                 <textarea
-                  value={verificationNotes}
-                  onChange={(e) => setVerificationNotes(e.target.value)}
+                  value={actionNotes}
+                  onChange={(e) => setActionNotes(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   rows={4}
                   placeholder={
-                    showNotesModal.action === 'approve' 
+                    showActionModal.action === 'approve'
                       ? 'Optional notes about the approval...'
                       : 'Please explain why this application is being rejected...'
                   }
-                  required={showNotesModal.action === 'reject'}
+                  required={showActionModal.action === 'reject'}
                 />
               </div>
-              
+
               <div className="flex gap-3">
                 <button
                   onClick={() => {
-                    setShowNotesModal(null);
-                    setVerificationNotes('');
+                    setShowActionModal(null);
+                    setActionNotes('');
                   }}
                   className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleNotesSubmit}
-                  disabled={showNotesModal.action === 'reject' && !verificationNotes.trim()}
+                  onClick={handleActionSubmit}
+                  disabled={showActionModal.action === 'reject' && !actionNotes.trim()}
                   className={`flex-1 px-4 py-3 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                    showNotesModal.action === 'approve' 
-                      ? 'bg-green-600 hover:bg-green-700' 
+                    showActionModal.action === 'approve'
+                      ? 'bg-green-600 hover:bg-green-700'
                       : 'bg-red-600 hover:bg-red-700'
                   }`}
                 >
-                  {showNotesModal.action === 'approve' ? 'Approve' : 'Reject'}
+                  {showActionModal.action === 'approve' ? 'Approve' : 'Reject'}
                 </button>
               </div>
             </div>
