@@ -3,13 +3,23 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'html-transform',
+      transformIndexHtml(html) {
+        return html.replace(/%VITE_GOOGLE_MAPS_API_KEY%/g, process.env.VITE_GOOGLE_MAPS_API_KEY || '')
+      }
+    }
+  ],
   envPrefix: ['VITE_'],
   envDir: '.',
   define: {
     global: 'globalThis',
   },
   build: {
+    outDir: 'dist',
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -17,7 +27,8 @@ export default defineConfig({
           router: ['react-router-dom'],
           supabase: ['@supabase/supabase-js'],
           ui: ['lucide-react'],
-          animations: ['gsap']
+          animations: ['gsap'],
+          maps: ['@googlemaps/js-api-loader']
         },
       },
     },

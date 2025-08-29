@@ -35,7 +35,7 @@ class GoogleMapsService {
   private apiKey: string;
 
   constructor() {
-    this.apiKey = 'AIzaSyBLZlTvlD3CSPEDHF52mtgXvJuX5-Kp30g';
+    this.apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
     
     if (!this.apiKey) {
       console.warn('Google Maps API key not configured. Map features will be limited.');
