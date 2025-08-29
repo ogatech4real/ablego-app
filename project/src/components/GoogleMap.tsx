@@ -1,6 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { MapPin, Navigation, Users, Car, AlertTriangle } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { MapPin, Navigation, Users, Car, AlertTriangle, Route, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { googleMapsService } from '../services/googleMapsService';
+import { type AddressDetails } from '../services/googlePlacesService';
 
 interface MapLocation {
   lat: number;
@@ -43,6 +45,13 @@ interface VerifiedSupportWorker {
   last_update: string;
 }
 
+interface RouteInfo {
+  distance: string;
+  duration: string;
+  distanceMiles: number;
+  durationMinutes: number;
+}
+
 interface GoogleMapProps {
   pickup?: string;
   dropoff?: string;
@@ -53,6 +62,7 @@ interface GoogleMapProps {
   maxProviders?: number;
   searchRadius?: number; // kilometers
   className?: string;
+  onRouteUpdate?: (routeInfo: RouteInfo) => void;
 }
 
 const GoogleMap: React.FC<GoogleMapProps> = ({ 
@@ -64,7 +74,8 @@ const GoogleMap: React.FC<GoogleMapProps> = ({
   showProviders = true,
   maxProviders = 25,
   searchRadius = 10, // 10km default radius
-  className = '' 
+  className = '',
+  onRouteUpdate
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -72,17 +83,89 @@ const GoogleMap: React.FC<GoogleMapProps> = ({
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
   const [markers, setMarkers] = useState<any[]>([]);
+  const [routePolyline, setRoutePolyline] = useState<google.maps.Polyline | null>(null);
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [verifiedDrivers, setVerifiedDrivers] = useState<VerifiedDriver[]>([]);
   const [verifiedSupportWorkers, setVerifiedSupportWorkers] = useState<VerifiedSupportWorker[]>([]);
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [providersError, setProvidersError] = useState<string | null>(null);
   const [totalProvidersInArea, setTotalProvidersInArea] = useState({ drivers: 0, supportWorkers: 0 });
 
+  // Route calculation effect
   useEffect(() => {
-    if (userLocation && showProviders) {
-      loadNearbyProviders();
+    if (pickupCoords && dropoffCoords) {
+      calculateRoute();
     }
-  }, [userLocation, showProviders, searchRadius, maxProviders]);
+  }, [pickupCoords, dropoffCoords, stops]);
+
+  // Calculate route with real-time updates
+  const calculateRoute = useCallback(async () => {
+    if (!pickupCoords || !dropoffCoords) return;
+
+    setIsCalculatingRoute(true);
+
+    try {
+      // Clear existing route
+      if (routePolyline) {
+        routePolyline.setMap(null);
+      }
+
+      // Prepare waypoints for the route
+      const waypoints = [pickupCoords, ...stops.map(stop => stop.coords), dropoffCoords];
+      
+      // Calculate route using Google Maps service
+      const routeResult = await googleMapsService.getMultiStopRoute(waypoints);
+      
+      if (routeResult && routeResult.status === 'OK') {
+        // Create polyline for the route
+        const polyline = new google.maps.Polyline({
+          path: waypoints,
+          geodesic: true,
+          strokeColor: '#3B82F6',
+          strokeOpacity: 0.8,
+          strokeWeight: 4,
+          map: map
+        });
+
+        setRoutePolyline(polyline);
+
+        // Update route info
+        const newRouteInfo: RouteInfo = {
+          distance: routeResult.distance.text,
+          duration: routeResult.duration.text,
+          distanceMiles: routeResult.distance.miles,
+          durationMinutes: routeResult.duration.minutes
+        };
+
+        setRouteInfo(newRouteInfo);
+        
+        // Notify parent component
+        if (onRouteUpdate) {
+          onRouteUpdate(newRouteInfo);
+        }
+
+        // Adjust map bounds to show the entire route
+        if (map) {
+          const bounds = new google.maps.LatLngBounds();
+          waypoints.forEach(point => bounds.extend(point));
+          map.fitBounds(bounds);
+          
+          // Ensure minimum zoom level
+          const listener = google.maps.event.addListener(map, 'idle', () => {
+            if (map.getZoom() && map.getZoom()! > 15) {
+              map.setZoom(15);
+            }
+            google.maps.event.removeListener(listener);
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Route calculation error:', error);
+    } finally {
+      setIsCalculatingRoute(false);
+    }
+  }, [pickupCoords, dropoffCoords, stops, map, routePolyline, onRouteUpdate]);
 
   useEffect(() => {
     // Check if Google Maps API is available

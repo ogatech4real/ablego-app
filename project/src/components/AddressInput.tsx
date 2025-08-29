@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapPin, Navigation, Loader, CheckCircle, AlertCircle, Crosshair } from 'lucide-react';
+import { MapPin, Navigation, Loader, CheckCircle, AlertCircle, Crosshair, Target, Info } from 'lucide-react';
 import { googlePlacesService, type AddressDetails } from '../services/googlePlacesService';
 import { gsap } from 'gsap';
 
@@ -12,6 +12,7 @@ interface AddressInputProps {
   showUseLocation?: boolean;
   icon: 'pickup' | 'dropoff';
   className?: string;
+  required?: boolean;
 }
 
 const AddressInput: React.FC<AddressInputProps> = ({
@@ -22,14 +23,17 @@ const AddressInput: React.FC<AddressInputProps> = ({
   onLocationSelect,
   showUseLocation = false,
   icon,
-  className = ''
+  className = '',
+  required = false
 }) => {
   const [predictions, setPredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const [showPredictions, setShowPredictions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [validationStatus, setValidationStatus] = useState<'none' | 'valid' | 'invalid'>('none');
+  const [validationStatus, setValidationStatus] = useState<'none' | 'valid' | 'invalid' | 'precise' | 'imprecise'>('none');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [selectedPlaceId, setSelectedPlaceId] = useState<string>('');
+  const [currentAddressDetails, setCurrentAddressDetails] = useState<AddressDetails | null>(null);
+  const [precisionInfo, setPrecisionInfo] = useState<string>('');
 
   const inputRef = useRef<HTMLInputElement>(null);
   const predictionsRef = useRef<HTMLDivElement>(null);
@@ -58,9 +62,9 @@ const AddressInput: React.FC<AddressInputProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Get autocomplete predictions
+  // Get autocomplete predictions with enhanced real-time updates
   const getPredictions = useCallback(async (input: string) => {
-    if (!input || input.length < 3) {
+    if (!input || input.length < 2) {
       setPredictions([]);
       setShowPredictions(false);
       return;
@@ -82,15 +86,25 @@ const AddressInput: React.FC<AddressInputProps> = ({
     }
   }, []);
 
-  // Debounced prediction fetching
+  // Enhanced debounced prediction fetching with real-time updates
   useEffect(() => {
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    debounceTimeoutRef.current = setTimeout(() => {
-      getPredictions(value);
-    }, 300);
+    // Immediate prediction for short inputs
+    if (value.length >= 2 && value.length <= 4) {
+      debounceTimeoutRef.current = setTimeout(() => {
+        getPredictions(value);
+      }, 200); // Faster response for short inputs
+    } else if (value.length > 4) {
+      debounceTimeoutRef.current = setTimeout(() => {
+        getPredictions(value);
+      }, 150); // Even faster for longer inputs
+    } else {
+      setPredictions([]);
+      setShowPredictions(false);
+    }
 
     return () => {
       if (debounceTimeoutRef.current) {
@@ -99,7 +113,7 @@ const AddressInput: React.FC<AddressInputProps> = ({
     };
   }, [value, getPredictions]);
 
-  // Handle input change
+  // Handle input change with enhanced feedback
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
@@ -108,19 +122,22 @@ const AddressInput: React.FC<AddressInputProps> = ({
     if (validationStatus !== 'none') {
       setValidationStatus('none');
       setErrorMessage('');
+      setPrecisionInfo('');
     }
     
     // Clear selected place if user modifies the input
     if (selectedPlaceId) {
       setSelectedPlaceId('');
+      setCurrentAddressDetails(null);
     }
   };
 
-  // Handle prediction selection
+  // Enhanced prediction selection with precision feedback
   const handlePredictionSelect = async (prediction: google.maps.places.AutocompletePrediction) => {
     setIsLoading(true);
     setValidationStatus('none');
     setErrorMessage('');
+    setPrecisionInfo('');
 
     try {
       const placeDetails = await googlePlacesService.getPlaceDetails(prediction.place_id);
@@ -134,6 +151,10 @@ const AddressInput: React.FC<AddressInputProps> = ({
           return;
         }
 
+        // Check precision level
+        const isPrecise = googlePlacesService.isPreciseEnoughForBooking(placeDetails);
+        const precisionLevel = placeDetails.preciseLocation ? 'precise' : 'imprecise';
+        
         // Update input with formatted address
         const displayAddress = googlePlacesService.getDisplayAddress(placeDetails);
         onChange(displayAddress, placeDetails);
@@ -144,7 +165,18 @@ const AddressInput: React.FC<AddressInputProps> = ({
         }
 
         setSelectedPlaceId(prediction.place_id);
-        setValidationStatus('valid');
+        setCurrentAddressDetails(placeDetails);
+        setValidationStatus(precisionLevel);
+        
+        // Set precision feedback
+        if (isPrecise) {
+          setPrecisionInfo('✓ Precise location - Ready for booking');
+        } else if (placeDetails.preciseLocation) {
+          setPrecisionInfo('⚠️ Good location - Consider adding more details');
+        } else {
+          setPrecisionInfo('⚠️ General area - Please select a specific address');
+        }
+        
         setShowPredictions(false);
       } else {
         setValidationStatus('invalid');
@@ -159,27 +191,20 @@ const AddressInput: React.FC<AddressInputProps> = ({
     }
   };
 
-  // Handle use current location
+  // Enhanced current location with precision feedback
   const handleUseLocation = async () => {
     setIsLoading(true);
     setValidationStatus('none');
     setErrorMessage('');
+    setPrecisionInfo('');
 
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 minutes
-        });
-      });
-
-      const { latitude, longitude } = position.coords;
-      
-      // Reverse geocode the coordinates
-      const addressDetails = await googlePlacesService.geocodeAddress(`${latitude}, ${longitude}`);
+      const addressDetails = await googlePlacesService.getCurrentLocation();
       
       if (addressDetails && googlePlacesService.isUKAddress(addressDetails)) {
+        const isPrecise = googlePlacesService.isPreciseEnoughForBooking(addressDetails);
+        const precisionLevel = addressDetails.preciseLocation ? 'precise' : 'imprecise';
+        
         const displayAddress = googlePlacesService.getDisplayAddress(addressDetails);
         onChange(displayAddress, addressDetails);
         
@@ -188,7 +213,17 @@ const AddressInput: React.FC<AddressInputProps> = ({
         }
 
         setSelectedPlaceId(addressDetails.placeId);
-        setValidationStatus('valid');
+        setCurrentAddressDetails(addressDetails);
+        setValidationStatus(precisionLevel);
+        
+        // Set precision feedback with accuracy information
+        if (isPrecise) {
+          setPrecisionInfo(`✓ Precise location (${addressDetails.accuracy ? Math.round(addressDetails.accuracy) : 'unknown'}m accuracy) - Ready for booking`);
+        } else if (addressDetails.preciseLocation) {
+          setPrecisionInfo(`⚠️ Good location (${addressDetails.accuracy ? Math.round(addressDetails.accuracy) : 'unknown'}m accuracy) - Consider adding more details`);
+        } else {
+          setPrecisionInfo(`⚠️ General area (${addressDetails.accuracy ? Math.round(addressDetails.accuracy) : 'unknown'}m accuracy) - Please select a specific address`);
+        }
       } else {
         setValidationStatus('invalid');
         setErrorMessage('Unable to get your current location or not in UK');
@@ -202,18 +237,22 @@ const AddressInput: React.FC<AddressInputProps> = ({
     }
   };
 
-  // Handle manual address validation (when user types and presses enter)
+  // Enhanced manual address validation
   const handleManualValidation = async () => {
     if (!value.trim()) return;
 
     setIsLoading(true);
     setValidationStatus('none');
     setErrorMessage('');
+    setPrecisionInfo('');
 
     try {
       const addressDetails = await googlePlacesService.geocodeAddress(value);
       
       if (addressDetails && googlePlacesService.isUKAddress(addressDetails)) {
+        const isPrecise = googlePlacesService.isPreciseEnoughForBooking(addressDetails);
+        const precisionLevel = addressDetails.preciseLocation ? 'precise' : 'imprecise';
+        
         const displayAddress = googlePlacesService.getDisplayAddress(addressDetails);
         onChange(displayAddress, addressDetails);
         
@@ -222,7 +261,17 @@ const AddressInput: React.FC<AddressInputProps> = ({
         }
 
         setSelectedPlaceId(addressDetails.placeId);
-        setValidationStatus('valid');
+        setCurrentAddressDetails(addressDetails);
+        setValidationStatus(precisionLevel);
+        
+        // Set precision feedback
+        if (isPrecise) {
+          setPrecisionInfo('✓ Precise location - Ready for booking');
+        } else if (addressDetails.preciseLocation) {
+          setPrecisionInfo('⚠️ Good location - Consider adding more details');
+        } else {
+          setPrecisionInfo('⚠️ General area - Please select a specific address');
+        }
       } else {
         setValidationStatus('invalid');
         setErrorMessage('Please enter a valid UK address');
@@ -248,10 +297,37 @@ const AddressInput: React.FC<AddressInputProps> = ({
     return icon === 'pickup' ? <MapPin className="w-5 h-5" /> : <Navigation className="w-5 h-5" />;
   };
 
+  const getValidationIcon = () => {
+    switch (validationStatus) {
+      case 'precise':
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case 'imprecise':
+        return <Target className="w-4 h-4 text-yellow-600" />;
+      case 'invalid':
+        return <AlertCircle className="w-4 h-4 text-red-600" />;
+      default:
+        return null;
+    }
+  };
+
+  const getValidationColor = () => {
+    switch (validationStatus) {
+      case 'precise':
+        return 'border-green-300 bg-green-50';
+      case 'imprecise':
+        return 'border-yellow-300 bg-yellow-50';
+      case 'invalid':
+        return 'border-red-300 bg-red-50';
+      default:
+        return 'border-gray-300';
+    }
+  };
+
   return (
     <div className={`relative ${className}`}>
       <label htmlFor={`${label.toLowerCase().replace(/\s+/g, '-')}`} className="block text-sm font-medium text-gray-700 mb-2">
         {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       
       <div className="relative">
@@ -274,8 +350,7 @@ const AddressInput: React.FC<AddressInputProps> = ({
               block w-full pl-10 pr-12 py-3 border rounded-xl shadow-sm
               focus:ring-2 focus:ring-blue-500 focus:border-blue-500
               transition-all duration-200
-              ${validationStatus === 'valid' ? 'border-green-300 bg-green-50' : ''}
-              ${validationStatus === 'invalid' ? 'border-red-300 bg-red-50' : 'border-gray-300'}
+              ${getValidationColor()}
               ${isLoading ? 'pr-16' : ''}
             `}
             autoComplete="off"
@@ -302,54 +377,86 @@ const AddressInput: React.FC<AddressInputProps> = ({
           )}
         </div>
 
-        {/* Validation Message */}
+        {/* Enhanced Validation Message */}
         <div 
           id={`${label.toLowerCase().replace(/\s+/g, '-')}-validation`}
           className="mt-1 min-h-[1.25rem]"
           aria-live="polite"
         >
-          {validationStatus === 'valid' && (
+          {validationStatus === 'precise' && (
             <p className="text-sm text-green-600 flex items-center">
-              <CheckCircle className="w-4 h-4 mr-1" />
-              Valid UK address
+              {getValidationIcon()}
+              <span className="ml-1">Precise UK address</span>
+            </p>
+          )}
+          {validationStatus === 'imprecise' && (
+            <p className="text-sm text-yellow-600 flex items-center">
+              {getValidationIcon()}
+              <span className="ml-1">Good location - Consider adding more details</span>
             </p>
           )}
           {validationStatus === 'invalid' && (
             <p className="text-sm text-red-600 flex items-center">
-              <AlertCircle className="w-4 h-4 mr-1" />
-              {errorMessage || 'Please enter a valid UK address'}
+              {getValidationIcon()}
+              <span className="ml-1">{errorMessage || 'Please enter a valid UK address'}</span>
+            </p>
+          )}
+          
+          {/* Precision Information */}
+          {precisionInfo && (
+            <p className="text-xs text-gray-600 mt-1 flex items-center">
+              <Info className="w-3 h-3 mr-1" />
+              {precisionInfo}
             </p>
           )}
         </div>
 
-        {/* Autocomplete Predictions Dropdown */}
+        {/* Enhanced Autocomplete Predictions Dropdown */}
         {showPredictions && predictions.length > 0 && (
           <div
             ref={predictionsRef}
             className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"
           >
-            {predictions.map((prediction, index) => (
-              <button
-                key={prediction.place_id}
-                type="button"
-                onClick={() => handlePredictionSelect(prediction)}
-                className="w-full px-4 py-3 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none transition-colors border-b border-gray-100 last:border-b-0"
-              >
-                <div className="flex items-start">
-                  <MapPin className="w-4 h-4 text-gray-400 mr-3 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <div className="text-gray-900 font-medium">
-                      {prediction.structured_formatting?.main_text || prediction.description}
+            {predictions.map((prediction, index) => {
+              const hasStreetNumber = prediction.structured_formatting?.main_text?.match(/^\d+/);
+              const isPrecise = hasStreetNumber;
+              
+              return (
+                <button
+                  key={prediction.place_id}
+                  type="button"
+                  onClick={() => handlePredictionSelect(prediction)}
+                  className={`w-full px-4 py-3 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none transition-colors border-b border-gray-100 last:border-b-0 ${
+                    isPrecise ? 'bg-green-50 hover:bg-green-100' : ''
+                  }`}
+                >
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0 mr-3 mt-0.5">
+                      {isPrecise ? (
+                        <Target className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <MapPin className="w-4 h-4 text-gray-400" />
+                      )}
                     </div>
-                    {prediction.structured_formatting?.secondary_text && (
-                      <div className="text-sm text-gray-500">
-                        {prediction.structured_formatting.secondary_text}
+                    <div className="flex-1">
+                      <div className="text-gray-900 font-medium">
+                        {prediction.structured_formatting?.main_text || prediction.description}
                       </div>
-                    )}
+                      {prediction.structured_formatting?.secondary_text && (
+                        <div className="text-sm text-gray-500">
+                          {prediction.structured_formatting.secondary_text}
+                        </div>
+                      )}
+                      {isPrecise && (
+                        <div className="text-xs text-green-600 mt-1">
+                          ✓ Precise location
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

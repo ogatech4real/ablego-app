@@ -32,7 +32,13 @@ export interface AddressDetails {
     administrativeArea?: string;
     country?: string;
     postcode?: string;
+    sublocality?: string;
+    neighborhood?: string;
   };
+  // Enhanced precision fields
+  preciseLocation: boolean;
+  accuracy?: number; // in meters
+  fullAddress: string;
 }
 
 class GooglePlacesService {
@@ -66,7 +72,7 @@ class GooglePlacesService {
   }
 
   /**
-   * Get autocomplete predictions for UK addresses
+   * Get autocomplete predictions for UK addresses with enhanced precision
    */
   async getAutocompletePredictions(input: string): Promise<google.maps.places.AutocompletePrediction[]> {
     return new Promise((resolve, reject) => {
@@ -75,7 +81,7 @@ class GooglePlacesService {
         return;
       }
 
-      if (!input || input.length < 3) {
+      if (!input || input.length < 2) { // Reduced minimum length for better UX
         resolve([]);
         return;
       }
@@ -83,13 +89,34 @@ class GooglePlacesService {
       const request: google.maps.places.AutocompletionRequest = {
         input,
         componentRestrictions: { country: 'gb' }, // UK only
-        types: ['address'], // Address types only
-        language: 'en-GB'
+        types: ['address', 'establishment', 'geocode'], // Include more types for better results
+        language: 'en-GB',
+        sessionToken: new google.maps.places.AutocompleteSessionToken() // For better performance
       };
 
       this.autocompleteService.getPlacePredictions(request, (predictions, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-          resolve(predictions);
+          // Filter and sort predictions for better relevance
+          const filteredPredictions = predictions
+            .filter(prediction => {
+              // Prioritize addresses with street numbers
+              const hasStreetNumber = prediction.structured_formatting?.main_text?.match(/^\d+/);
+              const isUKAddress = prediction.description.toLowerCase().includes('uk') || 
+                                 prediction.description.toLowerCase().includes('united kingdom');
+              return isUKAddress || hasStreetNumber;
+            })
+            .sort((a, b) => {
+              // Sort by relevance: street numbers first, then by description length
+              const aHasNumber = a.structured_formatting?.main_text?.match(/^\d+/);
+              const bHasNumber = b.structured_formatting?.main_text?.match(/^\d+/);
+              
+              if (aHasNumber && !bHasNumber) return -1;
+              if (!aHasNumber && bHasNumber) return 1;
+              
+              return (a.description.length - b.description.length);
+            });
+          
+          resolve(filteredPredictions);
         } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
           resolve([]);
         } else {
@@ -100,7 +127,7 @@ class GooglePlacesService {
   }
 
   /**
-   * Get detailed place information by place ID
+   * Get detailed place information by place ID with enhanced precision
    */
   async getPlaceDetails(placeId: string): Promise<AddressDetails | null> {
     return new Promise((resolve, reject) => {
@@ -111,7 +138,7 @@ class GooglePlacesService {
 
       const request: google.maps.places.PlaceDetailsRequest = {
         placeId,
-        fields: ['place_id', 'formatted_address', 'geometry', 'address_components']
+        fields: ['place_id', 'formatted_address', 'geometry', 'address_components', 'name']
       };
 
       this.placesService.getDetails(request, (place, status) => {
@@ -126,7 +153,7 @@ class GooglePlacesService {
   }
 
   /**
-   * Geocode an address string to get coordinates and details
+   * Enhanced geocoding with high precision for UK addresses
    */
   async geocodeAddress(address: string): Promise<AddressDetails | null> {
     return new Promise((resolve, reject) => {
@@ -138,13 +165,15 @@ class GooglePlacesService {
       const request: google.maps.GeocoderRequest = {
         address,
         componentRestrictions: { country: 'gb' }, // UK only
-        language: 'en-GB'
+        language: 'en-GB',
+        region: 'gb' // Bias towards UK results
       };
 
       this.geocoder.geocode(request, (results, status) => {
         if (status === google.maps.GeocoderStatus.OK && results && results.length > 0) {
-          const result = results[0];
-          const addressDetails = this.parseAddressComponents(result);
+          // Find the most precise result
+          const mostPreciseResult = this.findMostPreciseResult(results);
+          const addressDetails = this.parseAddressComponents(mostPreciseResult);
           resolve(addressDetails);
         } else {
           reject(new Error(`Geocoding failed: ${status}`));
@@ -154,18 +183,131 @@ class GooglePlacesService {
   }
 
   /**
-   * Parse address components from Google Places result
+   * Get precise current location with reverse geocoding
+   */
+  async getCurrentLocation(): Promise<AddressDetails | null> {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation not supported'));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude, accuracy } = position.coords;
+            
+            // Reverse geocode the coordinates
+            const addressDetails = await this.reverseGeocode(latitude, longitude, accuracy);
+            resolve(addressDetails);
+          } catch (error) {
+            reject(error);
+          }
+        },
+        (error) => {
+          reject(new Error(`Location error: ${error.message}`));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 300000 // 5 minutes
+        }
+      );
+    });
+  }
+
+  /**
+   * Reverse geocode coordinates to get precise address
+   */
+  async reverseGeocode(lat: number, lng: number, accuracy?: number): Promise<AddressDetails | null> {
+    return new Promise((resolve, reject) => {
+      if (!this.geocoder) {
+        reject(new Error('Google Geocoder not initialized'));
+        return;
+      }
+
+      const request: google.maps.GeocoderRequest = {
+        location: { lat, lng },
+        language: 'en-GB',
+        region: 'gb'
+      };
+
+      this.geocoder.geocode(request, (results, status) => {
+        if (status === google.maps.GeocoderStatus.OK && results && results.length > 0) {
+          const mostPreciseResult = this.findMostPreciseResult(results);
+          const addressDetails = this.parseAddressComponents(mostPreciseResult);
+          
+          // Add accuracy information
+          addressDetails.accuracy = accuracy;
+          addressDetails.preciseLocation = accuracy ? accuracy < 50 : false; // Consider precise if within 50m
+          
+          resolve(addressDetails);
+        } else {
+          reject(new Error(`Reverse geocoding failed: ${status}`));
+        }
+      });
+    });
+  }
+
+  /**
+   * Find the most precise geocoding result
+   */
+  private findMostPreciseResult(results: google.maps.GeocoderResult[]): google.maps.GeocoderResult {
+    // Sort by precision: street_number > route > locality > administrative_area
+    const precisionOrder = ['street_number', 'route', 'sublocality', 'locality', 'administrative_area_level_1'];
+    
+    return results.sort((a, b) => {
+      const aPrecision = this.getPrecisionScore(a, precisionOrder);
+      const bPrecision = this.getPrecisionScore(b, precisionOrder);
+      return bPrecision - aPrecision;
+    })[0];
+  }
+
+  /**
+   * Calculate precision score for a geocoding result
+   */
+  private getPrecisionScore(result: google.maps.GeocoderResult, precisionOrder: string[]): number {
+    const components = result.address_components || [];
+    let score = 0;
+    
+    precisionOrder.forEach((type, index) => {
+      if (components.some(comp => comp.types.includes(type))) {
+        score += precisionOrder.length - index;
+      }
+    });
+    
+    return score;
+  }
+
+  /**
+   * Parse address components from Google Places result with enhanced precision
    */
   private parseAddressComponents(place: google.maps.places.PlaceResult | google.maps.GeocoderResult): AddressDetails {
     const addressComponents = place.address_components || [];
     
-    // Extract individual components
+    // Extract individual components with enhanced precision
     const streetNumber = this.getAddressComponent(addressComponents, 'street_number');
     const route = this.getAddressComponent(addressComponents, 'route');
     const locality = this.getAddressComponent(addressComponents, 'locality');
+    const sublocality = this.getAddressComponent(addressComponents, 'sublocality');
+    const neighborhood = this.getAddressComponent(addressComponents, 'neighborhood');
     const administrativeArea = this.getAddressComponent(addressComponents, 'administrative_area_level_1');
     const country = this.getAddressComponent(addressComponents, 'country');
     const postcode = this.getAddressComponent(addressComponents, 'postal_code');
+
+    // Determine if this is a precise location
+    const preciseLocation = !!(streetNumber && route);
+
+    // Build full address with maximum detail
+    const fullAddress = this.buildFullAddress({
+      streetNumber,
+      route,
+      locality: locality || sublocality,
+      neighborhood,
+      administrativeArea,
+      postcode,
+      country
+    });
 
     return {
       placeId: place.place_id || '',
@@ -175,18 +317,61 @@ class GooglePlacesService {
       postcode: postcode || '',
       streetNumber,
       route,
-      locality,
+      locality: locality || sublocality,
       administrativeArea,
       country,
       addressComponents: {
         streetNumber,
         route,
-        locality,
+        locality: locality || sublocality,
         administrativeArea,
         country,
-        postcode
-      }
+        postcode,
+        sublocality,
+        neighborhood
+      },
+      preciseLocation,
+      fullAddress
     };
+  }
+
+  /**
+   * Build a comprehensive full address string
+   */
+  private buildFullAddress(components: {
+    streetNumber?: string;
+    route?: string;
+    locality?: string;
+    neighborhood?: string;
+    administrativeArea?: string;
+    postcode?: string;
+    country?: string;
+  }): string {
+    const parts = [];
+    
+    if (components.streetNumber && components.route) {
+      parts.push(`${components.streetNumber} ${components.route}`);
+    } else if (components.route) {
+      parts.push(components.route);
+    }
+    
+    if (components.neighborhood && components.neighborhood !== components.locality) {
+      parts.push(components.neighborhood);
+    }
+    
+    if (components.locality) {
+      parts.push(components.locality);
+    }
+    
+    if (components.administrativeArea) {
+      parts.push(components.administrativeArea);
+    }
+    
+    if (components.postcode) {
+      parts.push(components.postcode);
+    }
+    
+    return parts.join(', ');
   }
 
   /**
@@ -198,12 +383,13 @@ class GooglePlacesService {
   }
 
   /**
-   * Extract postcode from address string using regex (fallback)
+   * Extract postcode from address string using enhanced regex
    */
   extractPostcode(address: string): string | null {
+    // Enhanced UK postcode regex
     const postcodeRegex = /([A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2})/gi;
     const match = address.match(postcodeRegex);
-    return match ? match[0].toUpperCase() : null;
+    return match ? this.formatPostcode(match[0]) : null;
   }
 
   /**
@@ -226,26 +412,49 @@ class GooglePlacesService {
   }
 
   /**
-   * Get a user-friendly display address
+   * Get a user-friendly display address with precision indicator
    */
   getDisplayAddress(addressDetails: AddressDetails): string {
-    const parts = [];
-    
-    if (addressDetails.streetNumber && addressDetails.route) {
-      parts.push(`${addressDetails.streetNumber} ${addressDetails.route}`);
-    } else if (addressDetails.route) {
-      parts.push(addressDetails.route);
+    if (addressDetails.preciseLocation) {
+      // For precise locations, show street number and name
+      const parts = [];
+      
+      if (addressDetails.streetNumber && addressDetails.route) {
+        parts.push(`${addressDetails.streetNumber} ${addressDetails.route}`);
+      } else if (addressDetails.route) {
+        parts.push(addressDetails.route);
+      }
+      
+      if (addressDetails.locality) {
+        parts.push(addressDetails.locality);
+      }
+      
+      if (addressDetails.postcode) {
+        parts.push(addressDetails.postcode);
+      }
+      
+      return parts.join(', ');
+    } else {
+      // For less precise locations, show more context
+      return addressDetails.fullAddress || addressDetails.formattedAddress;
     }
-    
-    if (addressDetails.locality) {
-      parts.push(addressDetails.locality);
-    }
-    
-    if (addressDetails.postcode) {
-      parts.push(addressDetails.postcode);
-    }
-    
-    return parts.join(', ') || addressDetails.formattedAddress;
+  }
+
+  /**
+   * Get a detailed address for display purposes
+   */
+  getDetailedAddress(addressDetails: AddressDetails): string {
+    return addressDetails.fullAddress || addressDetails.formattedAddress;
+  }
+
+  /**
+   * Check if an address is precise enough for booking
+   */
+  isPreciseEnoughForBooking(addressDetails: AddressDetails): boolean {
+    return addressDetails.preciseLocation && 
+           addressDetails.streetNumber && 
+           addressDetails.route &&
+           addressDetails.postcode;
   }
 }
 
