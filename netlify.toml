@@ -4,7 +4,7 @@
   functions = "project/netlify/functions"
 
 [build.environment]
-  NODE_VERSION = "18.17.0"
+  NODE_VERSION = "18.18.0"
   NODE_ENV = "development"
   CI = "true"
   NPM_FLAGS = "--legacy-peer-deps"
