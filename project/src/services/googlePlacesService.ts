@@ -28,13 +28,13 @@ class GooglePlacesService {
   private autocompleteService: google.maps.places.AutocompleteService | null = null;
   private placesService: google.maps.places.PlacesService | null = null;
   private geocoder: google.maps.Geocoder | null = null;
+  private isInitialized = false;
 
   constructor() {
     this.initializeServices();
   }
 
   private initializeServices() {
-    // Simple initialization - wait for Google Maps to load
     const initServices = () => {
       if (typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.places) {
         try {
@@ -45,7 +45,8 @@ class GooglePlacesService {
           const dummyDiv = document.createElement('div');
           this.placesService = new google.maps.places.PlacesService(dummyDiv);
           
-          console.log('✅ Google Places services initialized');
+          this.isInitialized = true;
+          console.log('✅ Google Places services initialized successfully');
         } catch (error) {
           console.error('❌ Error initializing Google Places services:', error);
         }
@@ -61,7 +62,7 @@ class GooglePlacesService {
       
       // Also check periodically
       let attempts = 0;
-      const maxAttempts = 10;
+      const maxAttempts = 15;
       const checkInterval = setInterval(() => {
         attempts++;
         if (window.google && window.google.maps && window.google.maps.places) {
@@ -69,16 +70,45 @@ class GooglePlacesService {
           clearInterval(checkInterval);
         } else if (attempts >= maxAttempts) {
           clearInterval(checkInterval);
-          console.error('❌ Google Maps failed to load');
+          console.error('❌ Google Maps failed to load after multiple attempts');
         }
-      }, 500);
+      }, 400);
     }
   }
 
+  private waitForInitialization(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.isInitialized) {
+        resolve();
+        return;
+      }
+
+      let attempts = 0;
+      const maxAttempts = 20;
+      const checkInterval = setInterval(() => {
+        attempts++;
+        if (this.isInitialized) {
+          clearInterval(checkInterval);
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          reject(new Error('Google Places services failed to initialize'));
+        }
+      }, 200);
+    });
+  }
+
   async getAutocompletePredictions(input: string): Promise<google.maps.places.AutocompletePrediction[]> {
+    try {
+      await this.waitForInitialization();
+    } catch (error) {
+      console.error('Service not initialized:', error);
+      return [];
+    }
+
     return new Promise((resolve, reject) => {
       if (!this.autocompleteService) {
-        reject(new Error('Autocomplete service not initialized'));
+        reject(new Error('Autocomplete service not available'));
         return;
       }
 
@@ -91,37 +121,69 @@ class GooglePlacesService {
         input,
         componentRestrictions: { country: 'gb' },
         types: ['address', 'establishment', 'geocode'],
-        language: 'en-GB'
+        language: 'en-GB',
+        sessionToken: new google.maps.places.AutocompleteSessionToken()
       };
 
       this.autocompleteService.getPlacePredictions(request, (predictions, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-          // Simple filtering - just return UK addresses
+          // Intelligent filtering for UK addresses
           const ukPredictions = predictions.filter(prediction => {
             const description = prediction.description.toLowerCase();
-            return description.includes('uk') || 
-                   description.includes('united kingdom') ||
-                   description.includes('england') ||
-                   description.includes('scotland') ||
-                   description.includes('wales') ||
-                   description.includes('northern ireland') ||
-                   description.match(/[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}/i); // UK postcode
+            
+            // Accept UK addresses
+            if (description.includes('uk') || 
+                description.includes('united kingdom') ||
+                description.includes('england') ||
+                description.includes('scotland') ||
+                description.includes('wales') ||
+                description.includes('northern ireland')) {
+              return true;
+            }
+            
+            // Accept addresses with UK postcodes
+            if (description.match(/[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}/i)) {
+              return true;
+            }
+            
+            // Accept addresses that look like UK addresses (street numbers, etc.)
+            const mainText = prediction.structured_formatting?.main_text || '';
+            if (mainText.match(/^\d+/) || // Starts with number
+                description.includes('street') ||
+                description.includes('road') ||
+                description.includes('avenue') ||
+                description.includes('drive') ||
+                description.includes('lane') ||
+                description.includes('close') ||
+                description.includes('way')) {
+              return true;
+            }
+            
+            return false;
           });
           
           resolve(ukPredictions);
         } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
           resolve([]);
         } else {
-          reject(new Error(`Autocomplete failed: ${status}`));
+          console.error('Autocomplete failed:', status);
+          resolve([]); // Return empty array instead of rejecting
         }
       });
     });
   }
 
   async getPlaceDetails(placeId: string): Promise<AddressDetails | null> {
+    try {
+      await this.waitForInitialization();
+    } catch (error) {
+      console.error('Service not initialized:', error);
+      return null;
+    }
+
     return new Promise((resolve, reject) => {
       if (!this.placesService) {
-        reject(new Error('Places service not initialized'));
+        reject(new Error('Places service not available'));
         return;
       }
 
@@ -171,9 +233,16 @@ class GooglePlacesService {
   }
 
   async reverseGeocode(lat: number, lng: number, accuracy?: number): Promise<AddressDetails | null> {
+    try {
+      await this.waitForInitialization();
+    } catch (error) {
+      console.error('Service not initialized:', error);
+      return null;
+    }
+
     return new Promise((resolve, reject) => {
       if (!this.geocoder) {
-        reject(new Error('Geocoder not initialized'));
+        reject(new Error('Geocoder not available'));
         return;
       }
 

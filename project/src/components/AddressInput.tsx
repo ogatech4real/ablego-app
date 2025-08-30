@@ -62,7 +62,7 @@ const AddressInput: React.FC<AddressInputProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Get autocomplete predictions
+  // Get autocomplete predictions with intelligent handling
   const getPredictions = useCallback(async (input: string) => {
     if (!input || input.length < 2) {
       setPredictions([]);
@@ -77,19 +77,26 @@ const AddressInput: React.FC<AddressInputProps> = ({
 
     try {
       const results = await googlePlacesService.getAutocompletePredictions(input);
-      setPredictions(results);
-      setShowPredictions(results.length > 0);
+      
+      if (results.length > 0) {
+        setPredictions(results);
+        setShowPredictions(true);
+      } else {
+        setPredictions([]);
+        setShowPredictions(false);
+        // Don't show error for no results - just let user continue typing
+      }
     } catch (error) {
       console.error('Autocomplete error:', error);
-      setErrorMessage('Unable to fetch address suggestions');
-      setValidationStatus('invalid');
+      setPredictions([]);
       setShowPredictions(false);
+      // Only show error for actual failures, not for no results
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Debounced prediction fetching
+  // Intelligent debounced prediction fetching
   useEffect(() => {
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
@@ -102,9 +109,12 @@ const AddressInput: React.FC<AddressInputProps> = ({
       return;
     }
 
+    // Faster response for shorter inputs, slightly longer for longer inputs
+    const delay = value.length <= 3 ? 100 : 150;
+    
     debounceTimeoutRef.current = setTimeout(() => {
       getPredictions(value);
-    }, 200);
+    }, delay);
 
     return () => {
       if (debounceTimeoutRef.current) {
@@ -132,7 +142,7 @@ const AddressInput: React.FC<AddressInputProps> = ({
     }
   };
 
-  // Enhanced prediction selection with precision feedback
+  // Intelligent prediction selection
   const handlePredictionSelect = async (prediction: google.maps.places.AutocompletePrediction) => {
     setIsLoading(true);
     setValidationStatus('none');
@@ -143,19 +153,7 @@ const AddressInput: React.FC<AddressInputProps> = ({
       const placeDetails = await googlePlacesService.getPlaceDetails(prediction.place_id);
       
       if (placeDetails) {
-        // Validate it's a UK address
-        if (!googlePlacesService.isUKAddress(placeDetails)) {
-          setValidationStatus('invalid');
-          setErrorMessage('Please select a UK address');
-          setIsLoading(false);
-          return;
-        }
-
-        // Check precision level
-        const isPrecise = googlePlacesService.isPreciseEnoughForBooking(placeDetails);
-        const precisionLevel = placeDetails.preciseLocation ? 'precise' : 'imprecise';
-        
-        // Update input with formatted address
+        // Always accept the selection - let the user decide
         const displayAddress = googlePlacesService.getDisplayAddress(placeDetails);
         onChange(displayAddress, placeDetails);
         
@@ -166,15 +164,17 @@ const AddressInput: React.FC<AddressInputProps> = ({
 
         setSelectedPlaceId(prediction.place_id);
         setCurrentAddressDetails(placeDetails);
-        setValidationStatus(precisionLevel);
         
-        // Set precision feedback
-        if (isPrecise) {
-          setPrecisionInfo('✓ Precise location - Ready for booking');
-        } else if (placeDetails.preciseLocation) {
-          setPrecisionInfo('⚠️ Good location - Consider adding more details');
+        // Provide helpful feedback without being too strict
+        if (placeDetails.preciseLocation && placeDetails.streetNumber && placeDetails.route) {
+          setValidationStatus('precise');
+          setPrecisionInfo('✓ Full address selected - Ready for booking');
+        } else if (placeDetails.route) {
+          setValidationStatus('valid');
+          setPrecisionInfo('✓ Address selected - Consider adding house number for precise pickup');
         } else {
-          setPrecisionInfo('⚠️ General area - Please select a specific address');
+          setValidationStatus('valid');
+          setPrecisionInfo('✓ Location selected - Consider adding street details for precise pickup');
         }
         
         setShowPredictions(false);
