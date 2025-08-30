@@ -45,29 +45,63 @@ class GooglePlacesService {
   private autocompleteService: google.maps.places.AutocompleteService | null = null;
   private placesService: google.maps.places.PlacesService | null = null;
   private geocoder: google.maps.Geocoder | null = null;
+  private isInitialized = false;
 
   constructor() {
     this.initializeServices();
   }
 
+  /**
+   * Check if Google Maps API is loaded and ready
+   */
+  private isGoogleMapsReady(): boolean {
+    return typeof window !== 'undefined' && 
+           window.google && 
+           window.google.maps && 
+           window.google.maps.places &&
+           this.isInitialized;
+  }
+
   private initializeServices() {
-    // Wait for Google Maps to be loaded
-    if (typeof window !== 'undefined' && window.google && window.google.maps) {
-      this.autocompleteService = new google.maps.places.AutocompleteService();
-      this.geocoder = new google.maps.Geocoder();
-      
-      // Create a dummy div for PlacesService (required by Google API)
-      const dummyDiv = document.createElement('div');
-      this.placesService = new google.maps.places.PlacesService(dummyDiv);
-    } else {
+    const initialize = () => {
+      if (typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.places) {
+        try {
+          this.autocompleteService = new google.maps.places.AutocompleteService();
+          this.geocoder = new google.maps.Geocoder();
+          
+          // Create a dummy div for PlacesService (required by Google API)
+          const dummyDiv = document.createElement('div');
+          this.placesService = new google.maps.places.PlacesService(dummyDiv);
+          this.isInitialized = true;
+          
+          console.log('✅ Google Places services initialized successfully');
+        } catch (error) {
+          console.error('❌ Error initializing Google Places services:', error);
+        }
+      }
+    };
+
+    // Try to initialize immediately
+    initialize();
+
+    // If not ready, wait for Google Maps to load
+    if (typeof window !== 'undefined') {
       // Listen for Google Maps to load
-      window.addEventListener('google-maps-loaded', () => {
-        this.autocompleteService = new google.maps.places.AutocompleteService();
-        this.geocoder = new google.maps.Geocoder();
-        
-        const dummyDiv = document.createElement('div');
-        this.placesService = new google.maps.places.PlacesService(dummyDiv);
-      });
+      window.addEventListener('google-maps-loaded', initialize);
+      
+      // Also check periodically for a few seconds
+      let attempts = 0;
+      const maxAttempts = 10;
+      const checkInterval = setInterval(() => {
+        attempts++;
+        if (window.google && window.google.maps && window.google.maps.places) {
+          initialize();
+          clearInterval(checkInterval);
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          console.error('❌ Google Maps failed to load after multiple attempts');
+        }
+      }, 500);
     }
   }
 
@@ -76,7 +110,14 @@ class GooglePlacesService {
    */
   async getAutocompletePredictions(input: string): Promise<google.maps.places.AutocompletePrediction[]> {
     return new Promise((resolve, reject) => {
+      if (!this.isGoogleMapsReady()) {
+        console.error('❌ Google Maps API not ready');
+        reject(new Error('Google Maps API not ready. Please wait a moment and try again.'));
+        return;
+      }
+
       if (!this.autocompleteService) {
+        console.error('❌ Autocomplete service not initialized');
         reject(new Error('Google Places Autocomplete service not initialized'));
         return;
       }
@@ -85,6 +126,8 @@ class GooglePlacesService {
         resolve([]);
         return;
       }
+
+      console.log('🔍 Fetching predictions for:', input);
 
       const request: google.maps.places.AutocompletionRequest = {
         input,
@@ -95,6 +138,8 @@ class GooglePlacesService {
       };
 
       this.autocompleteService.getPlacePredictions(request, (predictions, status) => {
+        console.log('📡 Autocomplete response:', { status, predictionsCount: predictions?.length || 0 });
+        
         if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
           // Filter and sort predictions for better relevance
           const filteredPredictions = predictions

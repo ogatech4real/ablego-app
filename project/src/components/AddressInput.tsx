@@ -72,14 +72,23 @@ const AddressInput: React.FC<AddressInputProps> = ({
 
     setIsLoading(true);
     setValidationStatus('none');
+    setErrorMessage('');
 
     try {
+      console.log('🔍 Getting predictions for:', input);
       const results = await googlePlacesService.getAutocompletePredictions(input);
+      console.log('✅ Predictions received:', results.length);
+      
       setPredictions(results);
       setShowPredictions(results.length > 0);
+      
+      if (results.length === 0) {
+        setErrorMessage('No address suggestions found. Try a different search term.');
+        setValidationStatus('invalid');
+      }
     } catch (error) {
-      console.error('Autocomplete error:', error);
-      setErrorMessage('Unable to fetch address suggestions');
+      console.error('❌ Autocomplete error:', error);
+      setErrorMessage('Unable to fetch address suggestions. Please check your connection and try again.');
       setValidationStatus('invalid');
     } finally {
       setIsLoading(false);
@@ -92,19 +101,20 @@ const AddressInput: React.FC<AddressInputProps> = ({
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // Immediate prediction for short inputs
-    if (value.length >= 2 && value.length <= 4) {
-      debounceTimeoutRef.current = setTimeout(() => {
-        getPredictions(value);
-      }, 200); // Faster response for short inputs
-    } else if (value.length > 4) {
-      debounceTimeoutRef.current = setTimeout(() => {
-        getPredictions(value);
-      }, 150); // Even faster for longer inputs
-    } else {
+    // Clear predictions if input is too short
+    if (value.length < 2) {
       setPredictions([]);
       setShowPredictions(false);
+      setErrorMessage('');
+      return;
     }
+
+    // More responsive debouncing for better UX
+    const delay = value.length <= 3 ? 100 : 50; // Very fast for short inputs
+    
+    debounceTimeoutRef.current = setTimeout(() => {
+      getPredictions(value);
+    }, delay);
 
     return () => {
       if (debounceTimeoutRef.current) {
