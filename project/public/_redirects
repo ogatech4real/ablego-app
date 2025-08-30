@@ -1,1 +1,21 @@
+# SPA redirects - handle client-side routing
 /*    /index.html   200
+
+# Specific route redirects for better SEO
+/admin    /index.html   200
+/admin/*    /index.html   200
+/booking    /index.html   200
+/booking/*    /index.html   200
+/dashboard    /index.html   200
+/dashboard/*    /index.html   200
+/login    /index.html   200
+/signup    /index.html   200
+/about    /index.html   200
+/contact    /index.html   200
+/services    /index.html   200
+/safety    /index.html   200
+/privacy-policy    /index.html   200
+/terms    /index.html   200
+
+# Handle 404s gracefully
+/404    /index.html   200

@@ -13,11 +13,85 @@
   # VITE_STRIPE_PUBLISHABLE_KEY = "from_netlify_env"
   # VITE_GOOGLE_MAPS_API_KEY = "from_netlify_env"
 
+# SPA redirects - handle client-side routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  force = false
 
+# Specific route redirects for better SEO
+[[redirects]]
+  from = "/admin"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/booking"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/booking/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/login"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/signup"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/about"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/contact"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/services"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/safety"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/privacy-policy"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/terms"
+  to = "/index.html"
+  status = 200
+
+# Security headers
 [[headers]]
   for = "/*"
   [headers.values]
@@ -26,7 +100,9 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Cache-Control = "public, max-age=3600, must-revalidate"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
+# Cache static assets
 [[headers]]
   for = "/assets/*"
   [headers.values]
@@ -52,6 +128,22 @@
   [headers.values]
     Cache-Control = "public, max-age=86400"
 
+[[headers]]
+  for = "*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "*.jpeg"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# Environment-specific settings
 [context.production]
   [context.production.environment]
     NODE_ENV = "production"
@@ -59,5 +151,10 @@
 
 [context.deploy-preview]
   [context.deploy-preview.environment]
+    NODE_ENV = "staging"
+    GENERATE_SOURCEMAP = "true"
+
+[context.branch-deploy]
+  [context.branch-deploy.environment]
     NODE_ENV = "staging"
     GENERATE_SOURCEMAP = "true"
