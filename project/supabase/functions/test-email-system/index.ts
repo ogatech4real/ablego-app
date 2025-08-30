@@ -28,7 +28,35 @@ serve(async (req) => {
       email_sending: false,
       database_connection: false,
       email_queue: false,
+      environment_variables: false,
       errors: [] as string[]
+    }
+
+    // Test 0: Environment Variables
+    try {
+      const smtpHost = Deno.env.get('SMTP_HOST')
+      const smtpPort = Deno.env.get('SMTP_PORT')
+      const smtpUsername = Deno.env.get('SMTP_USER')
+      const smtpPassword = Deno.env.get('SMTP_PASS')
+      const smtpFromName = Deno.env.get('SMTP_FROM_NAME')
+      const smtpFromEmail = Deno.env.get('SMTP_FROM_EMAIL')
+
+      if (smtpHost && smtpPort && smtpUsername && smtpPassword) {
+        testResults.environment_variables = true
+        console.log('✅ Environment variables configured')
+      } else {
+        testResults.errors.push('SMTP environment variables not configured')
+        console.error('❌ Missing environment variables:', {
+          host: !!smtpHost,
+          port: !!smtpPort,
+          username: !!smtpUsername,
+          password: !!smtpPassword,
+          fromName: !!smtpFromName,
+          fromEmail: !!smtpFromEmail
+        })
+      }
+    } catch (error) {
+      testResults.errors.push(`Environment variables test error: ${error.message}`)
     }
 
     // Test 1: Database Connection
@@ -49,70 +77,76 @@ serve(async (req) => {
     }
 
     // Test 2: SMTP Connection and Email Sending
-    try {
-      const smtpConfig = {
-        hostname: 'smtp.ionos.co.uk',
-        port: 587,
-        username: 'admin@ablego.co.uk',
-        password: 'CareGold17',
-        tls: true
-      }
+    if (testResults.environment_variables) {
+      try {
+        const smtpHost = Deno.env.get('SMTP_HOST')
+        const smtpPort = Deno.env.get('SMTP_PORT')
+        const smtpUsername = Deno.env.get('SMTP_USER')
+        const smtpPassword = Deno.env.get('SMTP_PASS')
+        const smtpFromName = Deno.env.get('SMTP_FROM_NAME')
+        const smtpFromEmail = Deno.env.get('SMTP_FROM_EMAIL')
 
-      console.log('🔗 Testing IONOS SMTP connection...')
+        console.log('🔗 Testing SMTP connection...')
 
-      const client = new SMTPClient({
-        connection: {
-          hostname: smtpConfig.hostname,
-          port: smtpConfig.port,
-          tls: smtpConfig.tls,
-          auth: {
-            username: smtpConfig.username,
-            password: smtpConfig.password,
+        const client = new SMTPClient({
+          connection: {
+            hostname: smtpHost!,
+            port: parseInt(smtpPort!),
+            tls: true,
+            auth: {
+              username: smtpUsername!,
+              password: smtpPassword!,
+            },
           },
-        },
-      });
+        });
 
-      // Test email content
-      const testEmailHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Email System Test - AbleGo</title>
-        </head>
-        <body>
-            <h2>🧪 Email System Test</h2>
-            <p>This is a test email to verify the IONOS SMTP configuration is working correctly.</p>
-            <p><strong>Test Details:</strong></p>
-            <ul>
-                <li>SMTP Host: smtp.ionos.co.uk</li>
-                <li>Port: 587</li>
-                <li>Username: admin@ablego.co.uk</li>
-                <li>Test Time: ${new Date().toISOString()}</li>
-            </ul>
-            <p>If you receive this email, the email system is working correctly! 🎉</p>
-            <hr>
-            <p><small>AbleGo Ltd - Professional Transport Services</small></p>
-        </body>
-        </html>
-      `
+        // Test email content
+        const testEmailHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Email System Test - AbleGo</title>
+          </head>
+          <body>
+              <h2>🧪 Email System Test</h2>
+              <p>This is a test email to verify the SMTP configuration is working correctly.</p>
+              <p><strong>Test Details:</strong></p>
+              <ul>
+                  <li>SMTP Host: ${smtpHost}</li>
+                  <li>Port: ${smtpPort}</li>
+                  <li>Username: ${smtpUsername}</li>
+                  <li>Test Time: ${new Date().toISOString()}</li>
+              </ul>
+              <p>If you receive this email, the email system is working correctly! 🎉</p>
+              <hr>
+              <p><small>AbleGo Ltd - Professional Transport Services</small></p>
+          </body>
+          </html>
+        `
 
-      await client.send({
-        from: 'AbleGo Ltd <admin@ablego.co.uk>',
-        to: 'admin@ablego.co.uk',
-        subject: '🧪 Email System Test - AbleGo',
-        content: 'This is a test email to verify the email system is working.',
-        html: testEmailHtml,
-      });
+        const fromName = smtpFromName || 'AbleGo Ltd'
+        const fromEmail = smtpFromEmail || smtpUsername
 
-      await client.close();
+        await client.send({
+          from: `${fromName} <${fromEmail}>`,
+          to: 'admin@ablego.co.uk',
+          subject: '🧪 Email System Test - AbleGo',
+          content: 'This is a test email to verify the email system is working.',
+          html: testEmailHtml,
+        });
 
-      testResults.smtp_connection = true
-      testResults.email_sending = true
-      console.log('✅ SMTP connection and email sending successful')
+        await client.close();
 
-    } catch (smtpError) {
-      testResults.errors.push(`SMTP test failed: ${smtpError.message}`)
-      console.error('❌ SMTP test failed:', smtpError)
+        testResults.smtp_connection = true
+        testResults.email_sending = true
+        console.log('✅ SMTP connection and email sending successful')
+
+      } catch (smtpError) {
+        testResults.errors.push(`SMTP test failed: ${smtpError.message}`)
+        console.error('❌ SMTP test failed:', smtpError)
+      }
+    } else {
+      testResults.errors.push('Skipping SMTP test - environment variables not configured')
     }
 
     // Test 3: Email Queue System
@@ -152,6 +186,7 @@ serve(async (req) => {
 
     // Generate test summary
     const allTestsPassed = testResults.database_connection && 
+                          testResults.environment_variables &&
                           testResults.smtp_connection && 
                           testResults.email_sending && 
                           testResults.email_queue
@@ -169,12 +204,12 @@ serve(async (req) => {
         results: testResults,
         recommendations: allTestsPassed ? [
           '✅ Email system is ready for production use',
-          '✅ IONOS SMTP configuration is working correctly',
+          '✅ SMTP configuration is working correctly',
           '✅ Database connections are functioning',
           '✅ Email queue system is operational'
         ] : [
           '❌ Check the error details above',
-          '❌ Verify IONOS SMTP credentials',
+          '❌ Verify SMTP environment variables are set',
           '❌ Ensure database is accessible',
           '❌ Review Supabase Edge Function logs'
         ],

@@ -38,24 +38,53 @@ serve(async (req) => {
       )
     }
 
-    // IONOS SMTP Configuration
+    // Get SMTP configuration from environment variables
+    const smtpHost = Deno.env.get('SMTP_HOST')
+    const smtpPort = Deno.env.get('SMTP_PORT')
+    const smtpUsername = Deno.env.get('SMTP_USER')
+    const smtpPassword = Deno.env.get('SMTP_PASS')
+    const smtpFromName = Deno.env.get('SMTP_FROM_NAME')
+    const smtpFromEmail = Deno.env.get('SMTP_FROM_EMAIL')
+
+    // Validate SMTP configuration
+    if (!smtpHost || !smtpPort || !smtpUsername || !smtpPassword) {
+      console.error('❌ SMTP environment variables not configured')
+      return new Response(
+        JSON.stringify({ 
+          error: 'SMTP configuration not found in environment variables',
+          required_vars: ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'],
+          configured: {
+            host: !!smtpHost,
+            port: !!smtpPort,
+            username: !!smtpUsername,
+            password: !!smtpPassword
+          }
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // IONOS SMTP Configuration from environment variables
     const smtpConfig = {
-      hostname: 'smtp.ionos.co.uk',
-      port: 587,
-      username: 'admin@ablego.co.uk',
-      password: 'CareGold17',
+      hostname: smtpHost,
+      port: parseInt(smtpPort),
+      username: smtpUsername,
+      password: smtpPassword,
       tls: true,
       auth: {
-        username: 'admin@ablego.co.uk',
-        password: 'CareGold17'
+        username: smtpUsername,
+        password: smtpPassword
       }
     }
 
     // Set default from address if not provided
-    const fromEmail = emailData.from || 'admin@ablego.co.uk'
-    const fromName = emailData.fromName || 'AbleGo Ltd'
+    const fromEmail = emailData.from || smtpFromEmail || smtpUsername
+    const fromName = emailData.fromName || smtpFromName || 'AbleGo Ltd'
 
-    console.log('📧 SENDING EMAIL VIA IONOS SMTP:', {
+    console.log('📧 SENDING EMAIL VIA SMTP:', {
       to: emailData.to,
       from: `${fromName} <${fromEmail}>`,
       subject: emailData.subject,
@@ -80,7 +109,7 @@ serve(async (req) => {
     });
 
     try {
-      console.log('🔗 Connecting to IONOS SMTP server...')
+      console.log('🔗 Connecting to SMTP server...')
       
       await client.send({
         from: `${fromName} <${fromEmail}>`,
@@ -92,10 +121,10 @@ serve(async (req) => {
 
       await client.close();
       
-      console.log('✅ Email sent successfully via IONOS SMTP:', {
+      console.log('✅ Email sent successfully via SMTP:', {
         recipient: emailData.to,
         subject: emailData.subject,
-        method: 'ionos_smtp',
+        method: 'smtp',
         timestamp: new Date().toISOString()
       })
 
@@ -105,7 +134,7 @@ serve(async (req) => {
           message: 'Email sent successfully',
           recipient: emailData.to,
           subject: emailData.subject,
-          method: 'ionos_smtp',
+          method: 'smtp',
           timestamp: new Date().toISOString()
         }),
         {
