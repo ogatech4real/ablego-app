@@ -39,6 +39,38 @@ BEGIN
   END IF;
 END $$;
 
+-- Create admin_email_notifications table if it doesn't exist
+CREATE TABLE IF NOT EXISTS admin_email_notifications (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  recipient_email text NOT NULL,
+  subject text NOT NULL,
+  html_content text NOT NULL,
+  booking_id uuid,
+  notification_type text DEFAULT 'system',
+  email_type text DEFAULT 'notification',
+  email_status text DEFAULT 'queued',
+  priority integer DEFAULT 3,
+  sent boolean DEFAULT false,
+  sent_at timestamptz,
+  retry_count integer DEFAULT 0,
+  max_retries integer DEFAULT 3,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Enable RLS on admin_email_notifications
+ALTER TABLE admin_email_notifications ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for admin_email_notifications
+CREATE POLICY "Admin can manage email notifications"
+  ON admin_email_notifications
+  FOR ALL
+  TO authenticated
+  USING (true);
+
+-- Grant permissions
+GRANT ALL ON admin_email_notifications TO authenticated;
+
 -- Add email delivery status tracking columns
 DO $$
 BEGIN
@@ -259,38 +291,8 @@ ON admin_email_notifications (created_at);
 CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_notification_type 
 ON admin_email_notifications (notification_type);
 
--- Insert default email templates if they don't exist
-INSERT INTO email_templates (template_name, email_type, subject_template, html_template, variables) 
-VALUES 
-(
-  'booking_confirmation',
-  'booking_invoice',
-  '🎉 Booking Created & Payment Instructions - AbleGo Ride on {{pickup_date}}',
-  '<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Booking Confirmation - AbleGo</title>
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #374151; background-color: #f9fafb; margin: 0; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden;">
-    <div style="background: linear-gradient(135deg, #3B82F6 0%, #14B8A6 100%); padding: 40px 30px; text-align: center;">
-      <h1 style="color: white; font-size: 28px; font-weight: bold; margin: 0;">🎉 Booking Created Successfully!</h1>
-      <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Complete payment to dispatch your driver</p>
-    </div>
-    <div style="padding: 30px;">
-      <p>Dear {{customer_name}},</p>
-      <p>Your AbleGo booking has been created. Complete payment to have your driver dispatched automatically.</p>
-      <div style="text-align: center; margin: 20px 0;">
-        <a href="{{tracking_url}}" style="background: #3B82F6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 12px; font-weight: bold;">Track Booking & Pay</a>
-      </div>
-    </div>
-  </div>
-</body>
-</html>',
-  '{"customer_name": "string", "pickup_date": "string", "tracking_url": "string"}'
-)
-ON CONFLICT (template_name) DO NOTHING;
+-- Note: Email templates will be created in a separate migration
+-- to avoid dependency issues
 
 -- Grant necessary permissions
 GRANT EXECUTE ON FUNCTION trigger_email_queue_processing() TO authenticated;
