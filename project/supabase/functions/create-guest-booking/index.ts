@@ -63,7 +63,7 @@ serve(async (req) => {
 
     const request: GuestBookingRequest = await req.json()
 
-    console.log('📝 Creating guest booking with account creation:', {
+    console.log('📝 Creating guest booking:', {
       guest_email: request.guest_email,
       guest_name: request.guest_name,
       create_account: request.create_account,
@@ -103,7 +103,7 @@ serve(async (req) => {
     let userAccountStatus = 'none';
 
     if (request.create_account && request.password) {
-      console.log('🔐 Creating user account for guest booking...')
+      console.log('🔐 Handling user account creation for guest booking...')
       
       try {
         // Check if user already exists
@@ -126,31 +126,18 @@ serve(async (req) => {
           
           console.log('✅ Linked to existing user account:', existingUser.id)
         } else {
-          // Create new user account using the enhanced function
-          const { data: accountResult, error: accountError } = await supabaseClient
-            .rpc('create_user_account_from_guest', {
-              guest_email: request.guest_email,
-              guest_name: request.guest_name,
-              guest_phone: request.guest_phone,
-              password_hash: request.password, // This will be hashed by Supabase Auth
-              guest_rider_id: null // Will be set after guest rider creation
-            })
-
-          if (accountError) {
-            console.error('❌ User account creation failed:', accountError)
-            userAccountStatus = 'failed';
-            userAccountResult = {
-              success: false,
-              error: accountError.message
-            };
-          } else {
-            userAccountStatus = 'created';
-            userAccountResult = accountResult;
-            console.log('✅ User account created successfully:', accountResult)
-          }
+          // For now, just mark as pending - we'll handle account creation separately
+          userAccountStatus = 'pending';
+          userAccountResult = {
+            success: true,
+            account_status: 'pending',
+            message: 'Account creation pending - will be processed separately',
+            action: 'pending_creation'
+          };
+          console.log('⏳ User account creation marked as pending')
         }
       } catch (accountError) {
-        console.error('❌ User account creation error:', accountError)
+        console.error('❌ User account check error:', accountError)
         userAccountStatus = 'failed';
         userAccountResult = {
           success: false,
@@ -179,7 +166,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Failed to create guest rider' 
+          error: 'Failed to create guest rider',
+          details: guestRiderError.message
         }),
         {
           status: 500,
@@ -188,16 +176,7 @@ serve(async (req) => {
       )
     }
 
-    // If user account was created, update the guest rider with the user ID
-    if (userAccountResult?.success && userAccountResult?.user_id && !guestRider.linked_user_id) {
-      await supabaseClient
-        .from('guest_riders')
-        .update({
-          linked_user_id: userAccountResult.user_id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', guestRider.id)
-    }
+    console.log('✅ Guest rider created/updated:', guestRider.id)
 
     // Create guest booking
     const { data: guestBooking, error: guestBookingError } = await supabaseClient
@@ -237,7 +216,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Failed to create booking' 
+          error: 'Failed to create booking',
+          details: guestBookingError.message
         }),
         {
           status: 500,
@@ -245,6 +225,8 @@ serve(async (req) => {
         }
       )
     }
+
+    console.log('✅ Guest booking created:', guestBooking.id)
 
     // Create stops if any
     if (request.booking_data.stops && request.booking_data.stops.length > 0) {
@@ -263,6 +245,8 @@ serve(async (req) => {
       if (stopsError) {
         console.error('❌ Error creating stops:', stopsError)
         // Don't fail the booking for stops error
+      } else {
+        console.log('✅ Stops created successfully')
       }
     }
 
@@ -284,7 +268,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Failed to create access token' 
+          error: 'Failed to create access token',
+          details: tokenError.message
         }),
         {
           status: 500,
@@ -292,6 +277,8 @@ serve(async (req) => {
         }
       )
     }
+
+    console.log('✅ Access token created:', accessToken)
 
     // Send confirmation email
     try {
@@ -358,7 +345,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: 'An unexpected error occurred' 
+        error: 'An unexpected error occurred',
+        details: error.message
       }),
       {
         status: 500,
