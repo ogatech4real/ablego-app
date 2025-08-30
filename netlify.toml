@@ -1,12 +1,13 @@
 [build]
   publish = "project/dist"
-  command = "cd project && npm install && npm run build"
+  command = "cd project && npm ci && npm run build"
   functions = "project/netlify/functions"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "18.17.0"
   NODE_ENV = "production"
   CI = "true"
+  NPM_FLAGS = "--legacy-peer-deps"
 
 # SPA redirects - handle client-side routing
 [[redirects]]
