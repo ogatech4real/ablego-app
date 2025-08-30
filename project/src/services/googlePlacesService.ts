@@ -108,7 +108,8 @@ class GooglePlacesService {
 
     return new Promise((resolve, reject) => {
       if (!this.autocompleteService) {
-        reject(new Error('Autocomplete service not available'));
+        console.error('Autocomplete service not available');
+        resolve([]);
         return;
       }
 
@@ -116,6 +117,8 @@ class GooglePlacesService {
         resolve([]);
         return;
       }
+
+      console.log('🔍 Fetching predictions for:', input);
 
       const request: google.maps.places.AutocompletionRequest = {
         input,
@@ -126,12 +129,14 @@ class GooglePlacesService {
       };
 
       this.autocompleteService.getPlacePredictions(request, (predictions, status) => {
+        console.log('📡 Autocomplete response:', { status, predictionsCount: predictions?.length || 0 });
+        
         if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-          // Intelligent filtering for UK addresses
-          const ukPredictions = predictions.filter(prediction => {
+          // Be more permissive - accept most results and let user decide
+          const filteredPredictions = predictions.filter(prediction => {
             const description = prediction.description.toLowerCase();
             
-            // Accept UK addresses
+            // Accept all UK addresses
             if (description.includes('uk') || 
                 description.includes('united kingdom') ||
                 description.includes('england') ||
@@ -146,27 +151,46 @@ class GooglePlacesService {
               return true;
             }
             
-            // Accept addresses that look like UK addresses (street numbers, etc.)
+            // Accept any address that might be UK (be more permissive)
             const mainText = prediction.structured_formatting?.main_text || '';
-            if (mainText.match(/^\d+/) || // Starts with number
-                description.includes('street') ||
+            
+            // Accept addresses with numbers (house numbers)
+            if (mainText.match(/^\d+/)) {
+              return true;
+            }
+            
+            // Accept common UK street types
+            if (description.includes('street') ||
                 description.includes('road') ||
                 description.includes('avenue') ||
                 description.includes('drive') ||
                 description.includes('lane') ||
                 description.includes('close') ||
-                description.includes('way')) {
+                description.includes('way') ||
+                description.includes('place') ||
+                description.includes('crescent') ||
+                description.includes('terrace')) {
+              return true;
+            }
+            
+            // Accept any address that doesn't explicitly mention another country
+            const nonUKCountries = ['usa', 'united states', 'canada', 'australia', 'france', 'germany', 'spain', 'italy'];
+            const hasNonUKCountry = nonUKCountries.some(country => description.includes(country));
+            
+            if (!hasNonUKCountry) {
               return true;
             }
             
             return false;
           });
           
-          resolve(ukPredictions);
+          console.log('✅ Filtered predictions:', filteredPredictions.length);
+          resolve(filteredPredictions);
         } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+          console.log('📭 No results found');
           resolve([]);
         } else {
-          console.error('Autocomplete failed:', status);
+          console.error('❌ Autocomplete failed:', status);
           resolve([]); // Return empty array instead of rejecting
         }
       });
@@ -310,8 +334,24 @@ class GooglePlacesService {
   }
 
   isUKAddress(addressDetails: AddressDetails): boolean {
-    return addressDetails.country === 'United Kingdom' || 
-           addressDetails.addressComponents.country === 'United Kingdom';
+    // Be more permissive - accept addresses that might be UK
+    const country = addressDetails.country || addressDetails.addressComponents.country;
+    
+    if (country === 'United Kingdom' || country === 'UK') {
+      return true;
+    }
+    
+    // If no country is specified, assume it's UK (since we're filtering for UK addresses)
+    if (!country) {
+      return true;
+    }
+    
+    // Accept addresses with UK postcodes
+    if (addressDetails.postcode && addressDetails.postcode.match(/[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}/i)) {
+      return true;
+    }
+    
+    return false;
   }
 
   getDisplayAddress(addressDetails: AddressDetails): string {

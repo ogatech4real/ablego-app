@@ -76,21 +76,23 @@ const AddressInput: React.FC<AddressInputProps> = ({
     setErrorMessage('');
 
     try {
+      console.log('🔍 Getting predictions for:', input);
       const results = await googlePlacesService.getAutocompletePredictions(input);
+      console.log('✅ Received predictions:', results.length);
       
       if (results.length > 0) {
         setPredictions(results);
         setShowPredictions(true);
+        console.log('📋 Showing predictions dropdown');
       } else {
         setPredictions([]);
         setShowPredictions(false);
-        // Don't show error for no results - just let user continue typing
+        console.log('📭 No predictions to show');
       }
     } catch (error) {
-      console.error('Autocomplete error:', error);
+      console.error('❌ Autocomplete error:', error);
       setPredictions([]);
       setShowPredictions(false);
-      // Only show error for actual failures, not for no results
     } finally {
       setIsLoading(false);
     }
@@ -150,9 +152,12 @@ const AddressInput: React.FC<AddressInputProps> = ({
     setPrecisionInfo('');
 
     try {
+      console.log('🎯 Selected prediction:', prediction.description);
       const placeDetails = await googlePlacesService.getPlaceDetails(prediction.place_id);
       
       if (placeDetails) {
+        console.log('📍 Place details:', placeDetails);
+        
         // Always accept the selection - let the user decide
         const displayAddress = googlePlacesService.getDisplayAddress(placeDetails);
         onChange(displayAddress, placeDetails);
@@ -183,7 +188,7 @@ const AddressInput: React.FC<AddressInputProps> = ({
         setErrorMessage('Unable to get address details');
       }
     } catch (error) {
-      console.error('Error getting place details:', error);
+      console.error('❌ Error getting place details:', error);
       setValidationStatus('invalid');
       setErrorMessage('Unable to get address details');
     } finally {
@@ -199,11 +204,11 @@ const AddressInput: React.FC<AddressInputProps> = ({
     setPrecisionInfo('');
 
     try {
+      console.log('📍 Getting current location...');
       const addressDetails = await googlePlacesService.getCurrentLocation();
       
-      if (addressDetails && googlePlacesService.isUKAddress(addressDetails)) {
-        const isPrecise = googlePlacesService.isPreciseEnoughForBooking(addressDetails);
-        const precisionLevel = addressDetails.preciseLocation ? 'precise' : 'imprecise';
+      if (addressDetails) {
+        console.log('📍 Current location details:', addressDetails);
         
         const displayAddress = googlePlacesService.getDisplayAddress(addressDetails);
         onChange(displayAddress, addressDetails);
@@ -214,22 +219,24 @@ const AddressInput: React.FC<AddressInputProps> = ({
 
         setSelectedPlaceId(addressDetails.placeId);
         setCurrentAddressDetails(addressDetails);
-        setValidationStatus(precisionLevel);
         
-        // Set precision feedback with accuracy information
-        if (isPrecise) {
+        // Provide better feedback for current location
+        if (addressDetails.preciseLocation && addressDetails.streetNumber && addressDetails.route) {
+          setValidationStatus('precise');
           setPrecisionInfo(`✓ Precise location (${addressDetails.accuracy ? Math.round(addressDetails.accuracy) : 'unknown'}m accuracy) - Ready for booking`);
-        } else if (addressDetails.preciseLocation) {
-          setPrecisionInfo(`⚠️ Good location (${addressDetails.accuracy ? Math.round(addressDetails.accuracy) : 'unknown'}m accuracy) - Consider adding more details`);
+        } else if (addressDetails.route) {
+          setValidationStatus('valid');
+          setPrecisionInfo(`✓ Good location (${addressDetails.accuracy ? Math.round(addressDetails.accuracy) : 'unknown'}m accuracy) - Consider adding house number for precise pickup`);
         } else {
-          setPrecisionInfo(`⚠️ General area (${addressDetails.accuracy ? Math.round(addressDetails.accuracy) : 'unknown'}m accuracy) - Please select a specific address`);
+          setValidationStatus('valid');
+          setPrecisionInfo(`✓ Location detected (${addressDetails.accuracy ? Math.round(addressDetails.accuracy) : 'unknown'}m accuracy) - Consider selecting a specific address`);
         }
       } else {
         setValidationStatus('invalid');
-        setErrorMessage('Unable to get your current location or not in UK');
+        setErrorMessage('Unable to get your current location');
       }
     } catch (error) {
-      console.error('Location error:', error);
+      console.error('❌ Location error:', error);
       setValidationStatus('invalid');
       setErrorMessage('Unable to get your current location');
     } finally {
