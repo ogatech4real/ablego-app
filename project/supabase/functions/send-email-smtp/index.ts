@@ -38,27 +38,14 @@ serve(async (req) => {
       )
     }
 
-    // Get SMTP configuration from environment variables
-    const smtpHost = Deno.env.get('SMTP_HOST')
-    const smtpPort = Deno.env.get('SMTP_PORT')
-    const smtpUsername = Deno.env.get('SMTP_USER')
-    const smtpPassword = Deno.env.get('SMTP_PASS')
-    const smtpFromName = Deno.env.get('SMTP_FROM_NAME')
-    const smtpFromEmail = Deno.env.get('SMTP_FROM_EMAIL')
+    // Get SMTP configuration from environment variables first, then database
+    let smtpConfig = await getSMTPConfiguration()
 
-    // Validate SMTP configuration
-    if (!smtpHost || !smtpPort || !smtpUsername || !smtpPassword) {
-      console.error('❌ SMTP environment variables not configured')
+    if (!smtpConfig) {
       return new Response(
         JSON.stringify({ 
-          error: 'SMTP configuration not found in environment variables',
-          required_vars: ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'],
-          configured: {
-            host: !!smtpHost,
-            port: !!smtpPort,
-            username: !!smtpUsername,
-            password: !!smtpPassword
-          }
+          error: 'SMTP configuration not found',
+          details: 'Neither environment variables nor database configuration are available'
         }),
         {
           status: 500,
@@ -67,43 +54,31 @@ serve(async (req) => {
       )
     }
 
-    // IONOS SMTP Configuration from environment variables
-    const smtpConfig = {
-      hostname: smtpHost,
-      port: parseInt(smtpPort),
-      username: smtpUsername,
-      password: smtpPassword,
-      tls: true,
-      auth: {
-        username: smtpUsername,
-        password: smtpPassword
-      }
-    }
-
     // Set default from address if not provided
-    const fromEmail = emailData.from || smtpFromEmail || smtpUsername
-    const fromName = emailData.fromName || smtpFromName || 'AbleGo Ltd'
+    const fromEmail = emailData.from || smtpConfig.smtp_from_email || smtpConfig.smtp_user
+    const fromName = emailData.fromName || smtpConfig.smtp_from_name || 'AbleGo Ltd'
 
     console.log('📧 SENDING EMAIL VIA SMTP:', {
       to: emailData.to,
       from: `${fromName} <${fromEmail}>`,
       subject: emailData.subject,
-      smtp_host: smtpConfig.hostname,
-      smtp_user: smtpConfig.username,
-      smtp_port: smtpConfig.port,
-      tls_enabled: smtpConfig.tls,
+      smtp_host: smtpConfig.smtp_host,
+      smtp_user: smtpConfig.smtp_user,
+      smtp_port: smtpConfig.smtp_port,
+      tls_enabled: true,
+      config_source: smtpConfig.source,
       timestamp: new Date().toISOString()
     })
 
     // Create SMTP client and send email
     const client = new SMTPClient({
       connection: {
-        hostname: smtpConfig.hostname,
-        port: smtpConfig.port,
-        tls: smtpConfig.tls,
+        hostname: smtpConfig.smtp_host,
+        port: parseInt(smtpConfig.smtp_port),
+        tls: true,
         auth: {
-          username: smtpConfig.username,
-          password: smtpConfig.password,
+          username: smtpConfig.smtp_user,
+          password: smtpConfig.smtp_pass,
         },
       },
     });
@@ -125,6 +100,7 @@ serve(async (req) => {
         recipient: emailData.to,
         subject: emailData.subject,
         method: 'smtp',
+        config_source: smtpConfig.source,
         timestamp: new Date().toISOString()
       })
 
@@ -135,6 +111,7 @@ serve(async (req) => {
           recipient: emailData.to,
           subject: emailData.subject,
           method: 'smtp',
+          config_source: smtpConfig.source,
           timestamp: new Date().toISOString()
         }),
         {
@@ -170,6 +147,7 @@ serve(async (req) => {
           error_code: errorCode,
           details: smtpError.message,
           recipient: emailData.to,
+          config_source: smtpConfig.source,
           timestamp: new Date().toISOString()
         }),
         {
@@ -195,3 +173,58 @@ serve(async (req) => {
     )
   }
 })
+
+async function getSMTPConfiguration() {
+  // First, try environment variables
+  const envHost = Deno.env.get('SMTP_HOST')
+  const envPort = Deno.env.get('SMTP_PORT')
+  const envUser = Deno.env.get('SMTP_USER')
+  const envPass = Deno.env.get('SMTP_PASS')
+  const envFromName = Deno.env.get('SMTP_FROM_NAME')
+  const envFromEmail = Deno.env.get('SMTP_FROM_EMAIL')
+
+  if (envHost && envPort && envUser && envPass) {
+    console.log('✅ Using environment variables for SMTP configuration')
+    return {
+      smtp_host: envHost,
+      smtp_port: envPort,
+      smtp_user: envUser,
+      smtp_pass: envPass,
+      smtp_from_name: envFromName || 'AbleGo Ltd',
+      smtp_from_email: envFromEmail || envUser,
+      source: 'environment_variables'
+    }
+  }
+
+  // Fallback to database configuration
+  try {
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2')
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    )
+
+    const { data: configData, error: configError } = await supabaseClient
+      .rpc('get_smtp_config')
+
+    if (configError || !configData?.success) {
+      console.error('❌ Failed to get SMTP config from database:', configError)
+      return null
+    }
+
+    const config = configData.config
+    console.log('✅ Using database configuration for SMTP')
+    return {
+      smtp_host: config.smtp_host,
+      smtp_port: config.smtp_port,
+      smtp_user: config.smtp_user,
+      smtp_pass: config.smtp_pass,
+      smtp_from_name: config.smtp_from_name,
+      smtp_from_email: config.smtp_from_email,
+      source: 'database'
+    }
+  } catch (error) {
+    console.error('❌ Error getting SMTP config from database:', error)
+    return null
+  }
+}
