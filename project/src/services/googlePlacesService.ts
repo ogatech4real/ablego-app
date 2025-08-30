@@ -58,22 +58,37 @@ class GooglePlacesService {
     return typeof window !== 'undefined' && 
            window.google && 
            window.google.maps && 
-           window.google.maps.places &&
-           this.isInitialized;
+           window.google.maps.places;
+  }
+
+  /**
+   * Check if services are initialized
+   */
+  private areServicesInitialized(): boolean {
+    return this.isInitialized && 
+           this.autocompleteService !== null && 
+           this.placesService !== null && 
+           this.geocoder !== null;
   }
 
   private initializeServices() {
     const initialize = () => {
-      if (typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.places) {
+      if (this.isGoogleMapsReady()) {
         try {
-          this.autocompleteService = new google.maps.places.AutocompleteService();
-          this.geocoder = new google.maps.Geocoder();
+          // Only initialize if not already done
+          if (!this.autocompleteService) {
+            this.autocompleteService = new google.maps.places.AutocompleteService();
+          }
+          if (!this.geocoder) {
+            this.geocoder = new google.maps.Geocoder();
+          }
+          if (!this.placesService) {
+            // Create a dummy div for PlacesService (required by Google API)
+            const dummyDiv = document.createElement('div');
+            this.placesService = new google.maps.places.PlacesService(dummyDiv);
+          }
           
-          // Create a dummy div for PlacesService (required by Google API)
-          const dummyDiv = document.createElement('div');
-          this.placesService = new google.maps.places.PlacesService(dummyDiv);
           this.isInitialized = true;
-          
           console.log('✅ Google Places services initialized successfully');
         } catch (error) {
           console.error('❌ Error initializing Google Places services:', error);
@@ -91,17 +106,17 @@ class GooglePlacesService {
       
       // Also check periodically for a few seconds
       let attempts = 0;
-      const maxAttempts = 10;
+      const maxAttempts = 20; // Increased attempts
       const checkInterval = setInterval(() => {
         attempts++;
-        if (window.google && window.google.maps && window.google.maps.places) {
+        if (this.isGoogleMapsReady()) {
           initialize();
           clearInterval(checkInterval);
         } else if (attempts >= maxAttempts) {
           clearInterval(checkInterval);
           console.error('❌ Google Maps failed to load after multiple attempts');
         }
-      }, 500);
+      }, 300); // Faster checking
     }
   }
 
@@ -113,6 +128,22 @@ class GooglePlacesService {
       if (!this.isGoogleMapsReady()) {
         console.error('❌ Google Maps API not ready');
         reject(new Error('Google Maps API not ready. Please wait a moment and try again.'));
+        return;
+      }
+
+      // Try to initialize services if not ready
+      if (!this.areServicesInitialized()) {
+        console.log('🔄 Services not initialized, attempting to initialize...');
+        this.initializeServices();
+        
+        // Wait a bit and try again
+        setTimeout(() => {
+          if (this.areServicesInitialized()) {
+            this.getAutocompletePredictions(input).then(resolve).catch(reject);
+          } else {
+            reject(new Error('Google Places Autocomplete service not initialized'));
+          }
+        }, 500);
         return;
       }
 
@@ -132,7 +163,7 @@ class GooglePlacesService {
       const request: google.maps.places.AutocompletionRequest = {
         input,
         componentRestrictions: { country: 'gb' }, // UK only
-        types: ['address', 'establishment', 'geocode'], // Include more types for better results
+        types: ['address', 'establishment', 'geocode', 'street_address'], // Include more types for better results
         language: 'en-GB',
         sessionToken: new google.maps.places.AutocompleteSessionToken() // For better performance
       };
@@ -144,11 +175,22 @@ class GooglePlacesService {
           // Filter and sort predictions for better relevance
           const filteredPredictions = predictions
             .filter(prediction => {
-              // Prioritize addresses with street numbers
-              const hasStreetNumber = prediction.structured_formatting?.main_text?.match(/^\d+/);
+              // Be less restrictive - accept most UK addresses
               const isUKAddress = prediction.description.toLowerCase().includes('uk') || 
-                                 prediction.description.toLowerCase().includes('united kingdom');
-              return isUKAddress || hasStreetNumber;
+                                 prediction.description.toLowerCase().includes('united kingdom') ||
+                                 prediction.description.toLowerCase().includes('england') ||
+                                 prediction.description.toLowerCase().includes('scotland') ||
+                                 prediction.description.toLowerCase().includes('wales') ||
+                                 prediction.description.toLowerCase().includes('northern ireland');
+              
+              // If it's clearly a UK address, accept it
+              if (isUKAddress) return true;
+              
+              // Also accept addresses that might be UK (no explicit country mentioned)
+              const hasStreetNumber = prediction.structured_formatting?.main_text?.match(/^\d+/);
+              const hasPostcode = prediction.description.match(/[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}/i);
+              
+              return hasStreetNumber || hasPostcode;
             })
             .sort((a, b) => {
               // Sort by relevance: street numbers first, then by description length

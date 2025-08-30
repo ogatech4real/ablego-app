@@ -67,6 +67,7 @@ const AddressInput: React.FC<AddressInputProps> = ({
     if (!input || input.length < 2) {
       setPredictions([]);
       setShowPredictions(false);
+      setErrorMessage('');
       return;
     }
 
@@ -83,13 +84,27 @@ const AddressInput: React.FC<AddressInputProps> = ({
       setShowPredictions(results.length > 0);
       
       if (results.length === 0) {
-        setErrorMessage('No address suggestions found. Try a different search term.');
-        setValidationStatus('invalid');
+        // Don't show error for no results, just clear predictions
+        setShowPredictions(false);
       }
     } catch (error) {
       console.error('❌ Autocomplete error:', error);
-      setErrorMessage('Unable to fetch address suggestions. Please check your connection and try again.');
+      
+      // More specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('not ready')) {
+          setErrorMessage('Loading address suggestions... Please try again in a moment.');
+        } else if (error.message.includes('not initialized')) {
+          setErrorMessage('Initializing address service... Please try again.');
+        } else {
+          setErrorMessage('Unable to fetch address suggestions. Please try again.');
+        }
+      } else {
+        setErrorMessage('Unable to fetch address suggestions. Please try again.');
+      }
+      
       setValidationStatus('invalid');
+      setShowPredictions(false);
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +125,7 @@ const AddressInput: React.FC<AddressInputProps> = ({
     }
 
     // More responsive debouncing for better UX
-    const delay = value.length <= 3 ? 100 : 50; // Very fast for short inputs
+    const delay = value.length <= 3 ? 50 : 30; // Even faster response
     
     debounceTimeoutRef.current = setTimeout(() => {
       getPredictions(value);
