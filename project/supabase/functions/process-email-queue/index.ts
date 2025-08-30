@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,7 +41,7 @@ serve(async (req) => {
     if (!pendingEmails || pendingEmails.length === 0) {
       console.log('📭 No pending emails to process')
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           message: 'No pending emails to process',
           processed: 0,
           timestamp: new Date().toISOString()
@@ -72,7 +73,7 @@ serve(async (req) => {
         console.log('📧 PROCESSING EMAIL:', {
           id: email.id,
           to: email.recipient_email,
-          from: 'admin@ablego.co.uk',
+          from: 'AbleGo Ltd <admin@ablego.co.uk>',
           subject: email.subject,
           booking_id: email.booking_id,
           type: email.notification_type,
@@ -80,146 +81,92 @@ serve(async (req) => {
           timestamp: new Date().toISOString()
         })
 
-        // Use real SMTP function to send email
-        let emailSent = false
-        let smtpError = null
-        
-        try {
-          const { data: emailResult, error: emailError } = await supabaseClient.functions.invoke('send-email-smtp', {
-            body: {
-              to: email.recipient_email,
-              from: 'admin@ablego.co.uk',
-              subject: email.subject,
-              html: email.html_content
-            }
-          })
+        // Send email using IONOS SMTP
+        const emailResult = await sendEmailViaIONOS(email)
 
-          if (!emailError && emailResult?.message) {
-            emailSent = true
-            console.log('✅ Email sent successfully via SMTP:', {
-              recipient: email.recipient_email,
-              subject: email.subject,
-              method: 'real_smtp'
-            })
-          } else {
-            smtpError = emailError?.message || 'Unknown SMTP error'
-            console.log('❌ SMTP function failed:', smtpError)
-          }
-        } catch (smtpError) {
-          smtpError = smtpError.message
-          console.log('❌ SMTP function error:', smtpError)
-        }
-
-        // Fallback: Try Supabase auth invite method if SMTP fails
-        if (!emailSent) {
-          try {
-            console.log('🔄 Trying fallback email method...')
-            const { data: inviteResult, error: inviteError } = await supabaseClient.auth.admin.inviteUserByEmail(
-              email.recipient_email,
-              {
-                data: {
-                  custom_email: true,
-                  subject: email.subject,
-                  html_content: email.html_content,
-                  booking_id: email.booking_id,
-                  notification_type: email.notification_type,
-                  from_admin: true
-                },
-                redirectTo: 'https://ablego.co.uk'
-              }
-            )
-
-            if (!inviteError) {
-              emailSent = true
-              console.log('✅ Email sent via fallback method:', email.recipient_email)
-            } else {
-              console.log('❌ Fallback method failed:', inviteError.message)
-              smtpError = smtpError || inviteError.message
-            }
-          } catch (inviteError) {
-            console.log('❌ Fallback method error:', inviteError.message)
-            smtpError = smtpError || inviteError.message
-          }
-        }
-
-        if (emailSent) {
-          // Mark email as sent successfully
-          const { error: updateError } = await supabaseClient
+        if (emailResult.success) {
+          // Mark email as sent
+          await supabaseClient
             .from('admin_email_notifications')
             .update({
               sent: true,
               sent_at: new Date().toISOString(),
               delivery_status: 'sent',
+              delivery_error: null,
               updated_at: new Date().toISOString()
             })
             .eq('id', email.id)
 
-          if (updateError) {
-            console.error('Failed to mark email as sent:', updateError)
-            results.push({
-              email_id: email.id,
-              success: false,
-              error: updateError.message,
-              recipient: email.recipient_email
-            })
-            failedEmails++
-          } else {
-            results.push({
-              email_id: email.id,
-              success: true,
-              recipient: email.recipient_email,
-              type: email.notification_type,
-              subject: email.subject,
-              method: 'real_smtp',
-              sent_at: new Date().toISOString()
-            })
-            successfulEmails++
-          }
+          successfulEmails++
+          results.push({
+            id: email.id,
+            recipient: email.recipient_email,
+            status: 'sent',
+            method: 'ionos_smtp'
+          })
+
+          console.log('✅ Email sent successfully:', {
+            id: email.id,
+            recipient: email.recipient_email,
+            subject: email.subject,
+            method: 'ionos_smtp'
+          })
+
         } else {
-          // Mark email as failed and increment retry count
-          const newRetryCount = (email.retry_count || 0) + 1
-          const deliveryStatus = newRetryCount >= (email.max_retries || 3) ? 'failed' : 'pending'
-          
-          const { error: updateError } = await supabaseClient
+          // Mark email as failed
+          await supabaseClient
             .from('admin_email_notifications')
             .update({
-              delivery_status: deliveryStatus,
-              delivery_error: smtpError,
-              retry_count: newRetryCount,
+              delivery_status: 'failed',
+              delivery_error: emailResult.error,
+              retry_count: (email.retry_count || 0) + 1,
               last_retry_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
             .eq('id', email.id)
 
-          if (updateError) {
-            console.error('Failed to update email retry status:', updateError)
-          }
-
-          results.push({
-            email_id: email.id,
-            success: false,
-            recipient: email.recipient_email,
-            error: smtpError || 'All email methods failed',
-            retry_count: newRetryCount,
-            delivery_status: deliveryStatus
-          })
           failedEmails++
+          results.push({
+            id: email.id,
+            recipient: email.recipient_email,
+            status: 'failed',
+            error: emailResult.error
+          })
+
+          console.error('❌ Email sending failed:', {
+            id: email.id,
+            recipient: email.recipient_email,
+            error: emailResult.error
+          })
         }
+
       } catch (emailError) {
-        console.error('Error processing email:', emailError)
-        results.push({
-          email_id: email.id,
-          success: false,
-          error: emailError.message,
-          recipient: email.recipient_email
-        })
+        console.error('❌ Email processing error:', emailError)
+
+        // Mark email as failed
+        await supabaseClient
+          .from('admin_email_notifications')
+          .update({
+            delivery_status: 'failed',
+            delivery_error: emailError.message,
+            retry_count: (email.retry_count || 0) + 1,
+            last_retry_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', email.id)
+
         failedEmails++
+        results.push({
+          id: email.id,
+          recipient: email.recipient_email,
+          status: 'failed',
+          error: emailError.message
+        })
       }
     }
 
-    // Log processing summary
     console.log('📧 Email processing completed:', {
-      total_processed: pendingEmails.length,
+      total: pendingEmails.length,
       successful: successfulEmails,
       failed: failedEmails,
       timestamp: new Date().toISOString()
@@ -227,15 +174,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        message: `Processed ${pendingEmails.length} emails using admin@ablego.co.uk SMTP`,
-        results,
+        message: 'Email queue processing completed',
         summary: {
           total_processed: pendingEmails.length,
           successful: successfulEmails,
-          failed: failedEmails,
-          success_rate: pendingEmails.length > 0 ? ((successfulEmails / pendingEmails.length) * 100).toFixed(2) + '%' : '0%'
+          failed: failedEmails
         },
-        smtp_config: 'Using admin@ablego.co.uk SMTP setup from Supabase',
+        results: results,
         timestamp: new Date().toISOString()
       }),
       {
@@ -244,10 +189,11 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('❌ Email processing error:', error)
+    console.error('❌ Email queue processing error:', error)
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
+      JSON.stringify({
+        error: 'Failed to process email queue',
+        details: error.message,
         timestamp: new Date().toISOString()
       }),
       {
@@ -257,3 +203,72 @@ serve(async (req) => {
     )
   }
 })
+
+async function sendEmailViaIONOS(email: any): Promise<{ success: boolean; error?: string }> {
+  try {
+    // IONOS SMTP Configuration
+    const smtpConfig = {
+      hostname: 'smtp.ionos.co.uk',
+      port: 587,
+      username: 'admin@ablego.co.uk',
+      password: 'CareGold17',
+      tls: true
+    }
+
+    console.log('🔗 Connecting to IONOS SMTP server...')
+
+    // Create SMTP client and send email
+    const client = new SMTPClient({
+      connection: {
+        hostname: smtpConfig.hostname,
+        port: smtpConfig.port,
+        tls: smtpConfig.tls,
+        auth: {
+          username: smtpConfig.username,
+          password: smtpConfig.password,
+        },
+      },
+    });
+
+    await client.send({
+      from: 'AbleGo Ltd <admin@ablego.co.uk>',
+      to: email.recipient_email,
+      subject: email.subject,
+      content: 'Please view this email in HTML format',
+      html: email.html_content,
+    });
+
+    await client.close();
+
+    console.log('✅ Email sent successfully via IONOS SMTP:', {
+      recipient: email.recipient_email,
+      subject: email.subject,
+      method: 'ionos_smtp'
+    })
+
+    return { success: true }
+
+  } catch (smtpError) {
+    console.error('❌ IONOS SMTP Error:', smtpError)
+
+    // Provide specific error details
+    let errorDetails = 'Unknown SMTP error'
+
+    if (smtpError.message.includes('authentication')) {
+      errorDetails = 'SMTP authentication failed - check username/password'
+    } else if (smtpError.message.includes('connection')) {
+      errorDetails = 'Failed to connect to SMTP server'
+    } else if (smtpError.message.includes('TLS')) {
+      errorDetails = 'TLS connection failed'
+    } else if (smtpError.message.includes('timeout')) {
+      errorDetails = 'SMTP request timed out'
+    } else {
+      errorDetails = smtpError.message
+    }
+
+    return {
+      success: false,
+      error: errorDetails
+    }
+  }
+}

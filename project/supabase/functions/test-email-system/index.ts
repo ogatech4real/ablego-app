@@ -23,181 +23,163 @@ serve(async (req) => {
       function: 'test-email-system'
     })
 
-    // Test 1: Check SMTP Configuration
-    const smtpConfig = {
-      hostname: Deno.env.get('SMTP_HOST') || 'smtp.gmail.com',
-      port: parseInt(Deno.env.get('SMTP_PORT') || '587'),
-      username: Deno.env.get('SMTP_USERNAME') || 'admin@ablego.co.uk',
-      password: Deno.env.get('SMTP_PASSWORD') || '',
-      tls: true
+    const testResults = {
+      smtp_connection: false,
+      email_sending: false,
+      database_connection: false,
+      email_queue: false,
+      errors: [] as string[]
     }
 
-    const configTest = {
-      smtp_host: smtpConfig.hostname,
-      smtp_port: smtpConfig.port,
-      smtp_user: smtpConfig.username,
-      smtp_password_configured: !!smtpConfig.password,
-      tls_enabled: smtpConfig.tls
-    }
-
-    console.log('📧 SMTP Configuration:', configTest)
-
-    // Test 2: Test SMTP Connection
-    let smtpTest = { success: false, error: null }
-    
-    if (smtpConfig.password) {
-      try {
-        const client = new SMTPClient({
-          connection: {
-            hostname: smtpConfig.hostname,
-            port: smtpConfig.port,
-            tls: smtpConfig.tls,
-            auth: {
-              username: smtpConfig.username,
-              password: smtpConfig.password,
-            },
-          },
-        });
-
-        await client.send({
-          from: smtpConfig.username,
-          to: 'test@example.com',
-          subject: 'AbleGo Email System Test',
-          content: 'This is a test email to verify SMTP configuration.',
-          html: `
-            <html>
-              <body>
-                <h2>AbleGo Email System Test</h2>
-                <p>This is a test email to verify SMTP configuration is working properly.</p>
-                <p><strong>Test Details:</strong></p>
-                <ul>
-                  <li>SMTP Host: ${smtpConfig.hostname}</li>
-                  <li>SMTP Port: ${smtpConfig.port}</li>
-                  <li>SMTP User: ${smtpConfig.username}</li>
-                  <li>TLS Enabled: ${smtpConfig.tls}</li>
-                  <li>Test Time: ${new Date().toISOString()}</li>
-                </ul>
-                <p>If you receive this email, the SMTP configuration is working correctly!</p>
-              </body>
-            </html>
-          `
-        });
-
-        await client.close();
-        smtpTest = { success: true, error: null }
-        console.log('✅ SMTP test successful')
-      } catch (error) {
-        smtpTest = { success: false, error: error.message }
-        console.error('❌ SMTP test failed:', error.message)
-      }
-    } else {
-      smtpTest = { success: false, error: 'SMTP password not configured' }
-      console.error('❌ SMTP password not configured')
-    }
-
-    // Test 3: Check Email Queue Status
-    const { data: queueStatus, error: queueError } = await supabaseClient
-      .from('admin_email_notifications')
-      .select('*')
-      .eq('sent', false)
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    const queueTest = {
-      success: !queueError,
-      error: queueError?.message,
-      pending_emails: queueStatus?.length || 0,
-      recent_emails: queueStatus?.map(email => ({
-        id: email.id,
-        recipient: email.recipient_email,
-        subject: email.subject,
-        status: email.delivery_status,
-        created_at: email.created_at
-      })) || []
-    }
-
-    console.log('📧 Email Queue Status:', queueTest)
-
-    // Test 4: Test Email Queue Processing Function
-    let queueProcessingTest = { success: false, error: null, result: null }
-    
+    // Test 1: Database Connection
     try {
-      const { data: processingResult, error: processingError } = await supabaseClient.functions.invoke('process-email-queue', {
-        body: {}
-      })
+      const { data: testData, error: dbError } = await supabaseClient
+        .from('admin_email_notifications')
+        .select('count')
+        .limit(1)
 
-      if (processingError) {
-        queueProcessingTest = { success: false, error: processingError.message, result: null }
-        console.error('❌ Email queue processing test failed:', processingError.message)
+      if (dbError) {
+        testResults.errors.push(`Database connection failed: ${dbError.message}`)
       } else {
-        queueProcessingTest = { success: true, error: null, result: processingResult }
-        console.log('✅ Email queue processing test successful')
+        testResults.database_connection = true
+        console.log('✅ Database connection successful')
       }
     } catch (error) {
-      queueProcessingTest = { success: false, error: error.message, result: null }
-      console.error('❌ Email queue processing test failed:', error.message)
+      testResults.errors.push(`Database test error: ${error.message}`)
     }
 
-    // Test 5: Check Database Functions
-    const { data: functions, error: functionsError } = await supabaseClient
-      .rpc('manual_process_email_queue')
+    // Test 2: SMTP Connection and Email Sending
+    try {
+      const smtpConfig = {
+        hostname: 'smtp.ionos.co.uk',
+        port: 587,
+        username: 'admin@ablego.co.uk',
+        password: 'CareGold17',
+        tls: true
+      }
 
-    const functionsTest = {
-      success: !functionsError,
-      error: functionsError?.message,
-      result: functions
+      console.log('🔗 Testing IONOS SMTP connection...')
+
+      const client = new SMTPClient({
+        connection: {
+          hostname: smtpConfig.hostname,
+          port: smtpConfig.port,
+          tls: smtpConfig.tls,
+          auth: {
+            username: smtpConfig.username,
+            password: smtpConfig.password,
+          },
+        },
+      });
+
+      // Test email content
+      const testEmailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Email System Test - AbleGo</title>
+        </head>
+        <body>
+            <h2>🧪 Email System Test</h2>
+            <p>This is a test email to verify the IONOS SMTP configuration is working correctly.</p>
+            <p><strong>Test Details:</strong></p>
+            <ul>
+                <li>SMTP Host: smtp.ionos.co.uk</li>
+                <li>Port: 587</li>
+                <li>Username: admin@ablego.co.uk</li>
+                <li>Test Time: ${new Date().toISOString()}</li>
+            </ul>
+            <p>If you receive this email, the email system is working correctly! 🎉</p>
+            <hr>
+            <p><small>AbleGo Ltd - Professional Transport Services</small></p>
+        </body>
+        </html>
+      `
+
+      await client.send({
+        from: 'AbleGo Ltd <admin@ablego.co.uk>',
+        to: 'admin@ablego.co.uk',
+        subject: '🧪 Email System Test - AbleGo',
+        content: 'This is a test email to verify the email system is working.',
+        html: testEmailHtml,
+      });
+
+      await client.close();
+
+      testResults.smtp_connection = true
+      testResults.email_sending = true
+      console.log('✅ SMTP connection and email sending successful')
+
+    } catch (smtpError) {
+      testResults.errors.push(`SMTP test failed: ${smtpError.message}`)
+      console.error('❌ SMTP test failed:', smtpError)
     }
 
-    console.log('📧 Database Functions Test:', functionsTest)
+    // Test 3: Email Queue System
+    try {
+      // Add a test email to the queue
+      const { data: queueResult, error: queueError } = await supabaseClient
+        .from('admin_email_notifications')
+        .insert({
+          recipient_email: 'admin@ablego.co.uk',
+          subject: '🧪 Email Queue Test - AbleGo',
+          html_content: `
+            <h2>Email Queue Test</h2>
+            <p>This email was added to the queue for testing purposes.</p>
+            <p>Test Time: ${new Date().toISOString()}</p>
+          `,
+          notification_type: 'test',
+          sent: false
+        })
+        .select()
+        .single()
 
-    // Compile test results
-    const testResults = {
-      timestamp: new Date().toISOString(),
-      tests: {
-        smtp_configuration: configTest,
-        smtp_connection: smtpTest,
-        email_queue_status: queueTest,
-        queue_processing_function: queueProcessingTest,
-        database_functions: functionsTest
-      },
-      summary: {
-        total_tests: 5,
-        passed_tests: [
-          configTest.smtp_password_configured,
-          smtpTest.success,
-          queueTest.success,
-          queueProcessingTest.success,
-          functionsTest.success
-        ].filter(Boolean).length,
-        failed_tests: [
-          !configTest.smtp_password_configured,
-          !smtpTest.success,
-          !queueTest.success,
-          !queueProcessingTest.success,
-          !functionsTest.success
-        ].filter(Boolean).length
-      },
-      recommendations: []
-    }
+      if (queueError) {
+        testResults.errors.push(`Email queue test failed: ${queueError.message}`)
+      } else {
+        testResults.email_queue = true
+        console.log('✅ Email queue system working')
 
-    // Generate recommendations based on test results
-    if (!configTest.smtp_password_configured) {
-      testResults.recommendations.push('Configure SMTP_PASSWORD environment variable')
-    }
-    if (!smtpTest.success) {
-      testResults.recommendations.push('Check SMTP credentials and server configuration')
-    }
-    if (queueTest.pending_emails > 0) {
-      testResults.recommendations.push(`Process ${queueTest.pending_emails} pending emails`)
-    }
-    if (!queueProcessingTest.success) {
-      testResults.recommendations.push('Check process-email-queue function configuration')
+        // Clean up test email
+        await supabaseClient
+          .from('admin_email_notifications')
+          .delete()
+          .eq('id', queueResult.id)
+      }
+    } catch (error) {
+      testResults.errors.push(`Email queue test error: ${error.message}`)
     }
 
-    console.log('🧪 Email system test completed:', testResults.summary)
+    // Generate test summary
+    const allTestsPassed = testResults.database_connection && 
+                          testResults.smtp_connection && 
+                          testResults.email_sending && 
+                          testResults.email_queue
+
+    console.log('🧪 Email system test completed:', {
+      all_tests_passed: allTestsPassed,
+      results: testResults,
+      timestamp: new Date().toISOString()
+    })
 
     return new Response(
-      JSON.stringify(testResults),
+      JSON.stringify({
+        success: allTestsPassed,
+        message: allTestsPassed ? 'All email system tests passed!' : 'Some tests failed',
+        results: testResults,
+        recommendations: allTestsPassed ? [
+          '✅ Email system is ready for production use',
+          '✅ IONOS SMTP configuration is working correctly',
+          '✅ Database connections are functioning',
+          '✅ Email queue system is operational'
+        ] : [
+          '❌ Check the error details above',
+          '❌ Verify IONOS SMTP credentials',
+          '❌ Ensure database is accessible',
+          '❌ Review Supabase Edge Function logs'
+        ],
+        timestamp: new Date().toISOString()
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
@@ -206,7 +188,8 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Email system test error:', error)
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
+        success: false,
         error: 'Email system test failed',
         details: error.message,
         timestamp: new Date().toISOString()

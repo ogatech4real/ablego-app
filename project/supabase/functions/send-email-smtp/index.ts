@@ -8,7 +8,8 @@ const corsHeaders = {
 
 interface EmailRequest {
   to: string;
-  from: string;
+  from?: string;
+  fromName?: string;
   subject: string;
   html: string;
   text?: string;
@@ -37,39 +38,26 @@ serve(async (req) => {
       )
     }
 
-    // Enhanced SMTP Configuration from environment variables
+    // IONOS SMTP Configuration
     const smtpConfig = {
-      hostname: Deno.env.get('SMTP_HOST') || 'smtp.gmail.com',
-      port: parseInt(Deno.env.get('SMTP_PORT') || '587'),
-      username: Deno.env.get('SMTP_USERNAME') || 'admin@ablego.co.uk',
-      password: Deno.env.get('SMTP_PASSWORD') || '',
+      hostname: 'smtp.ionos.co.uk',
+      port: 587,
+      username: 'admin@ablego.co.uk',
+      password: 'CareGold17',
       tls: true,
       auth: {
-        username: Deno.env.get('SMTP_USERNAME') || 'admin@ablego.co.uk',
-        password: Deno.env.get('SMTP_PASSWORD') || ''
+        username: 'admin@ablego.co.uk',
+        password: 'CareGold17'
       }
     }
 
-    // Validate SMTP configuration
-    if (!smtpConfig.password) {
-      console.error('❌ SMTP password not configured')
-      return new Response(
-        JSON.stringify({ 
-          error: 'SMTP password not configured',
-          smtp_host: smtpConfig.hostname,
-          smtp_user: smtpConfig.username,
-          smtp_port: smtpConfig.port
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
+    // Set default from address if not provided
+    const fromEmail = emailData.from || 'admin@ablego.co.uk'
+    const fromName = emailData.fromName || 'AbleGo Ltd'
 
-    console.log('📧 SENDING EMAIL VIA REAL SMTP:', {
+    console.log('📧 SENDING EMAIL VIA IONOS SMTP:', {
       to: emailData.to,
-      from: emailData.from,
+      from: `${fromName} <${fromEmail}>`,
       subject: emailData.subject,
       smtp_host: smtpConfig.hostname,
       smtp_user: smtpConfig.username,
@@ -92,10 +80,10 @@ serve(async (req) => {
     });
 
     try {
-      console.log('🔗 Connecting to SMTP server...')
+      console.log('🔗 Connecting to IONOS SMTP server...')
       
       await client.send({
-        from: emailData.from,
+        from: `${fromName} <${fromEmail}>`,
         to: emailData.to,
         subject: emailData.subject,
         content: emailData.text || 'Please view this email in HTML format',
@@ -104,25 +92,20 @@ serve(async (req) => {
 
       await client.close();
       
-      console.log('✅ Email sent successfully to:', {
+      console.log('✅ Email sent successfully via IONOS SMTP:', {
         recipient: emailData.to,
         subject: emailData.subject,
-        method: 'real_smtp',
+        method: 'ionos_smtp',
         timestamp: new Date().toISOString()
       })
 
       return new Response(
-        JSON.stringify({ 
-          message: 'Email sent successfully via SMTP',
+        JSON.stringify({
+          success: true,
+          message: 'Email sent successfully',
           recipient: emailData.to,
           subject: emailData.subject,
-          method: 'real_smtp',
-          smtp_config: {
-            host: smtpConfig.hostname,
-            port: smtpConfig.port,
-            user: smtpConfig.username,
-            tls: smtpConfig.tls
-          },
+          method: 'ionos_smtp',
           timestamp: new Date().toISOString()
         }),
         {
@@ -131,48 +114,33 @@ serve(async (req) => {
       )
 
     } catch (smtpError) {
-      console.error('❌ SMTP sending failed:', {
-        error: smtpError.message,
-        recipient: emailData.to,
-        subject: emailData.subject,
-        smtp_host: smtpConfig.hostname,
-        smtp_user: smtpConfig.username,
-        timestamp: new Date().toISOString()
-      })
+      console.error('❌ SMTP Error:', smtpError)
       
-      await client.close();
-      
-      // Provide detailed error information
-      let errorDetails = smtpError.message
+      // Provide specific error details
       let errorCode = 'SMTP_ERROR'
+      let errorDetails = 'Unknown SMTP error'
       
       if (smtpError.message.includes('authentication')) {
-        errorCode = 'SMTP_AUTH_ERROR'
-        errorDetails = 'SMTP authentication failed. Please check username and password.'
+        errorCode = 'AUTH_ERROR'
+        errorDetails = 'SMTP authentication failed - check username/password'
       } else if (smtpError.message.includes('connection')) {
-        errorCode = 'SMTP_CONNECTION_ERROR'
-        errorDetails = 'Failed to connect to SMTP server. Please check host and port.'
+        errorCode = 'CONNECTION_ERROR'
+        errorDetails = 'Failed to connect to SMTP server'
       } else if (smtpError.message.includes('TLS')) {
-        errorCode = 'SMTP_TLS_ERROR'
-        errorDetails = 'TLS connection failed. Please check TLS configuration.'
+        errorCode = 'TLS_ERROR'
+        errorDetails = 'TLS connection failed'
       } else if (smtpError.message.includes('timeout')) {
-        errorCode = 'SMTP_TIMEOUT_ERROR'
-        errorDetails = 'SMTP operation timed out. Please try again.'
+        errorCode = 'TIMEOUT_ERROR'
+        errorDetails = 'SMTP request timed out'
       }
-      
+
       return new Response(
-        JSON.stringify({ 
-          error: 'Failed to send email via SMTP',
+        JSON.stringify({
+          success: false,
+          error: errorDetails,
           error_code: errorCode,
-          details: errorDetails,
+          details: smtpError.message,
           recipient: emailData.to,
-          subject: emailData.subject,
-          smtp_config: {
-            host: smtpConfig.hostname,
-            port: smtpConfig.port,
-            user: smtpConfig.username,
-            tls: smtpConfig.tls
-          },
           timestamp: new Date().toISOString()
         }),
         {
@@ -183,14 +151,11 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('❌ SMTP email function error:', {
-      error: error.message,
-      timestamp: new Date().toISOString()
-    })
-    
+    console.error('❌ Email function error:', error)
     return new Response(
-      JSON.stringify({ 
-        error: 'SMTP function error',
+      JSON.stringify({
+        success: false,
+        error: 'Internal server error',
         details: error.message,
         timestamp: new Date().toISOString()
       }),
