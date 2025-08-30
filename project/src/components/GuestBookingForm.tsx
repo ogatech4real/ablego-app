@@ -326,6 +326,17 @@ const GuestBookingForm: React.FC = () => {
     setSubmitError(null);
 
     try {
+      console.log('🚀 Starting cash/bank booking submission...', {
+        guestName: guestInfo.name,
+        guestEmail: guestInfo.email,
+        guestPhone: guestInfo.phone,
+        pickup: pickupDetails?.formattedAddress,
+        dropoff: dropoffDetails?.formattedAddress,
+        pickupTime: pickupTime.toISOString(),
+        fareEstimate: fareBreakdown?.estimatedTotal,
+        paymentMethod: 'cash_bank'
+      });
+
       // Create booking with cash/bank payment method
       const bookingData = {
         guestName: guestInfo.name,
@@ -349,12 +360,18 @@ const GuestBookingForm: React.FC = () => {
         paymentMethod: 'cash_bank' as const
       };
 
+      console.log('📋 Booking data prepared:', bookingData);
+
       // Import the guest booking service
       const { guestBookingService } = await import('../services/guestBookingService');
       
+      console.log('📞 Calling guest booking service...');
       const result = await guestBookingService.createGuestBooking(bookingData);
       
+      console.log('📥 Guest booking service response:', result);
+      
       if (result.success) {
+        console.log('✅ Booking created successfully:', result);
         setBookingResult({
           id: result.booking_id,
           access_token: result.access_token,
@@ -370,25 +387,27 @@ const GuestBookingForm: React.FC = () => {
             // Don't fail the booking for account creation issues
           }
         }
-      } else {
-        throw new Error(result.message || 'Booking creation failed');
-      }
-      
-      setCurrentStep('confirmation');
-      setShowPayment(false);
-      scrollToActionZone('.confirmation');
+        
+        setCurrentStep('confirmation');
+        setShowPayment(false);
+        scrollToActionZone('.confirmation');
 
-      // Animate to confirmation
-      if (containerRef.current) {
-        gsap.fromTo(containerRef.current,
-          { opacity: 0, scale: 0.95 },
-          { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.7)" }
-        );
+        // Animate to confirmation
+        if (containerRef.current) {
+          gsap.fromTo(containerRef.current,
+            { opacity: 0, scale: 0.95 },
+            { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.7)" }
+          );
+        }
+      } else {
+        console.error('❌ Booking creation failed:', result);
+        throw new Error(result.message || 'Booking creation failed');
       }
 
     } catch (error) {
-      console.error('Cash/Bank booking error:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Booking creation failed');
+      console.error('❌ Cash/Bank booking error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Booking creation failed';
+      setSubmitError(`Failed to create booking: ${errorMessage}`);
       scrollToActionZone('.payment-error');
     } finally {
       setIsSubmitting(false);
