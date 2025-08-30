@@ -10,7 +10,8 @@ export default defineConfig({
     {
       name: 'html-transform',
       transformIndexHtml(html) {
-        return html.replace(/%VITE_GOOGLE_MAPS_API_KEY%/g, 'AIzaSyCt3tEVN2fXMAkx8qpX1nk9G2nugAumB28')
+        const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyCt3tEVN2fXMAkx8qpX1nk9G2nugAumB28';
+        return html.replace(/%VITE_GOOGLE_MAPS_API_KEY%/g, apiKey)
       }
     },
     {
