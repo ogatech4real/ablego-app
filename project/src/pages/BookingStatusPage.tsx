@@ -54,8 +54,8 @@ const BookingStatusPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Load real booking data from Supabase
-      const { data, error } = await guestBookingService.getGuestBooking(token);
+      // Load real booking data from Supabase using access token
+      const { data, error } = await guestBookingService.getGuestBookingByToken(token);
       
       if (error) {
         setError(error.message || 'Failed to load booking');
@@ -70,7 +70,7 @@ const BookingStatusPage: React.FC = () => {
       setBooking(data);
       
       // Determine payment status based on booking status and timestamps
-      const bookingData = data.guest_booking;
+      const bookingData = data?.guest_booking;
       if (bookingData.status === 'pending') {
         setPaymentStatus('pending');
         setDriverAssigned(false);
