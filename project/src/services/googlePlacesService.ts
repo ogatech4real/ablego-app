@@ -123,7 +123,7 @@ class GooglePlacesService {
       const request: google.maps.places.AutocompletionRequest = {
         input,
         componentRestrictions: { country: 'gb' },
-        types: ['address', 'establishment', 'geocode'],
+        types: ['address'],
         language: 'en-GB',
         sessionToken: new google.maps.places.AutocompleteSessionToken()
       };
@@ -189,6 +189,26 @@ class GooglePlacesService {
         } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
           console.log('📭 No results found');
           resolve([]);
+        } else if (status === google.maps.places.PlacesServiceStatus.INVALID_REQUEST) {
+          console.log('🔄 Invalid request, trying with geocode type...');
+          // Try with geocode type as fallback
+          const fallbackRequest: google.maps.places.AutocompletionRequest = {
+            input,
+            componentRestrictions: { country: 'gb' },
+            types: ['geocode'],
+            language: 'en-GB',
+            sessionToken: new google.maps.places.AutocompleteSessionToken()
+          };
+          
+          this.autocompleteService.getPlacePredictions(fallbackRequest, (fallbackPredictions, fallbackStatus) => {
+            if (fallbackStatus === google.maps.places.PlacesServiceStatus.OK && fallbackPredictions) {
+              console.log('✅ Fallback predictions:', fallbackPredictions.length);
+              resolve(fallbackPredictions);
+            } else {
+              console.log('📭 No fallback results found');
+              resolve([]);
+            }
+          });
         } else {
           console.error('❌ Autocomplete failed:', status);
           resolve([]); // Return empty array instead of rejecting
@@ -253,6 +273,38 @@ class GooglePlacesService {
           maximumAge: 300000
         }
       );
+    });
+  }
+
+  async geocodeAddress(address: string): Promise<AddressDetails | null> {
+    try {
+      await this.waitForInitialization();
+    } catch (error) {
+      console.error('Service not initialized:', error);
+      return null;
+    }
+
+    return new Promise((resolve, reject) => {
+      if (!this.geocoder) {
+        reject(new Error('Geocoder not available'));
+        return;
+      }
+
+      const request: google.maps.GeocoderRequest = {
+        address,
+        componentRestrictions: { country: 'gb' },
+        language: 'en-GB',
+        region: 'gb'
+      };
+
+      this.geocoder.geocode(request, (results, status) => {
+        if (status === google.maps.GeocoderStatus.OK && results && results.length > 0) {
+          const addressDetails = this.parseAddressComponents(results[0]);
+          resolve(addressDetails);
+        } else {
+          reject(new Error(`Geocoding failed: ${status}`));
+        }
+      });
     });
   }
 
