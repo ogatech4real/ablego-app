@@ -11,7 +11,7 @@
   - Trip: trip_logs, trip_tracking, pricing_logs
   - Payment: payment_transactions, payment_splits, earnings_summary
   - Communication: notifications, admin_email_notifications, email_templates, newsletter_subscribers
-  - Admin: admin_email_notifications, email_queue_status
+  - Additional: certifications, vehicle_insurance
 */
 
 -- Enable required extensions
@@ -19,48 +19,58 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "http" WITH SCHEMA "extensions";
 
+-- Drop existing tables in reverse dependency order
+DROP TABLE IF EXISTS vehicle_insurance CASCADE;
+DROP TABLE IF EXISTS certifications CASCADE;
+DROP TABLE IF EXISTS earnings_summary CASCADE;
+DROP TABLE IF EXISTS payment_splits CASCADE;
+DROP TABLE IF EXISTS payment_transactions CASCADE;
+DROP TABLE IF EXISTS trip_tracking CASCADE;
+DROP TABLE IF EXISTS pricing_logs CASCADE;
+DROP TABLE IF EXISTS trip_logs CASCADE;
+DROP TABLE IF EXISTS booking_assignments CASCADE;
+DROP TABLE IF EXISTS booking_access_tokens CASCADE;
+DROP TABLE IF EXISTS stops CASCADE;
+DROP TABLE IF EXISTS guest_bookings CASCADE;
+DROP TABLE IF EXISTS bookings CASCADE;
+DROP TABLE IF EXISTS support_worker_applications CASCADE;
+DROP TABLE IF EXISTS driver_applications CASCADE;
+DROP TABLE IF EXISTS support_workers CASCADE;
+DROP TABLE IF EXISTS vehicles CASCADE;
+DROP TABLE IF EXISTS admin_email_notifications CASCADE;
+DROP TABLE IF EXISTS email_templates CASCADE;
+DROP TABLE IF EXISTS newsletter_subscribers CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS guest_riders CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- Drop existing enums
+DROP TYPE IF EXISTS user_role CASCADE;
+DROP TYPE IF EXISTS booking_status CASCADE;
+DROP TYPE IF EXISTS notification_type CASCADE;
+DROP TYPE IF EXISTS email_delivery_status CASCADE;
+DROP TYPE IF EXISTS payment_status CASCADE;
+DROP TYPE IF EXISTS application_status CASCADE;
+DROP TYPE IF EXISTS email_type CASCADE;
+DROP TYPE IF EXISTS email_status CASCADE;
+
 -- Create all enum types
-DO $$
-BEGIN
-  -- User roles
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
-    CREATE TYPE user_role AS ENUM ('rider', 'driver', 'support_worker', 'admin');
-  END IF;
-  
-  -- Booking status
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_status') THEN
-    CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'in_progress', 'completed', 'cancelled');
-  END IF;
-  
-  -- Notification types
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'notification_type') THEN
-    CREATE TYPE notification_type AS ENUM ('booking_request', 'trip_update', 'payment', 'system', 'emergency');
-  END IF;
-  
-  -- Email delivery status
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'email_delivery_status') THEN
-    CREATE TYPE email_delivery_status AS ENUM (
-      'pending', 'processing', 'sent', 'delivered', 'failed', 'bounced', 'retry_scheduled'
-    );
-  END IF;
-  
-  -- Payment status
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status') THEN
-    CREATE TYPE payment_status AS ENUM ('pending', 'processing', 'completed', 'failed', 'refunded');
-  END IF;
-  
-  -- Application status
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'application_status') THEN
-    CREATE TYPE application_status AS ENUM ('pending', 'under_review', 'approved', 'rejected');
-  END IF;
-END $$;
+CREATE TYPE user_role AS ENUM ('rider', 'driver', 'support_worker', 'admin');
+CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'in_progress', 'completed', 'cancelled');
+CREATE TYPE notification_type AS ENUM ('booking_request', 'trip_update', 'payment', 'system', 'emergency');
+CREATE TYPE email_delivery_status AS ENUM ('pending', 'processing', 'sent', 'delivered', 'failed', 'bounced', 'retry_scheduled');
+CREATE TYPE payment_status AS ENUM ('pending', 'processing', 'completed', 'failed', 'refunded');
+CREATE TYPE application_status AS ENUM ('pending', 'under_review', 'approved', 'rejected');
+CREATE TYPE email_type AS ENUM ('booking_invoice', 'payment_receipt', 'driver_assignment', 'trip_update', 'trip_completion', 'admin_notification', 'system_alert');
+CREATE TYPE email_status AS ENUM ('queued', 'sending', 'sent', 'delivered', 'failed', 'bounced');
 
 -- ============================================================================
 -- CORE USER TABLES
 -- ============================================================================
 
 -- Core users table (minimal auth data)
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE users (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   email text UNIQUE NOT NULL,
   role user_role NOT NULL DEFAULT 'rider',
@@ -68,7 +78,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Extended profiles table
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE profiles (
   id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   email text NOT NULL,
   name text,
@@ -87,7 +97,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 -- Guest riders table (for non-registered users)
-CREATE TABLE IF NOT EXISTS guest_riders (
+CREATE TABLE guest_riders (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   name text NOT NULL,
   email text NOT NULL,
@@ -95,26 +105,16 @@ CREATE TABLE IF NOT EXISTS guest_riders (
   linked_user_id uuid REFERENCES users(id),
   account_created_at timestamptz,
   created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE(email)
 );
-
--- Add unique constraint on email for guest_riders
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints 
-    WHERE table_name = 'guest_riders' AND constraint_name = 'guest_riders_email_key'
-  ) THEN
-    ALTER TABLE guest_riders ADD CONSTRAINT guest_riders_email_key UNIQUE (email);
-  END IF;
-END $$;
 
 -- ============================================================================
 -- BOOKING SYSTEM TABLES
 -- ============================================================================
 
 -- Registered user bookings table
-CREATE TABLE IF NOT EXISTS bookings (
+CREATE TABLE bookings (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   rider_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   pickup_address text NOT NULL,
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS bookings (
 );
 
 -- Guest bookings table
-CREATE TABLE IF NOT EXISTS guest_bookings (
+CREATE TABLE guest_bookings (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   guest_rider_id uuid NOT NULL REFERENCES guest_riders(id) ON DELETE CASCADE,
   linked_user_id uuid REFERENCES users(id),
@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS guest_bookings (
 );
 
 -- Stops table (linked to bookings)
-CREATE TABLE IF NOT EXISTS stops (
+CREATE TABLE stops (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   booking_id uuid NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
   order_index integer NOT NULL CHECK (order_index >= 0),
@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS stops (
 );
 
 -- Booking access tokens table
-CREATE TABLE IF NOT EXISTS booking_access_tokens (
+CREATE TABLE booking_access_tokens (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   guest_booking_id uuid NOT NULL REFERENCES guest_bookings(id) ON DELETE CASCADE,
   token text NOT NULL UNIQUE,
@@ -198,7 +198,7 @@ CREATE TABLE IF NOT EXISTS booking_access_tokens (
 );
 
 -- Booking assignments table
-CREATE TABLE IF NOT EXISTS booking_assignments (
+CREATE TABLE booking_assignments (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   booking_id uuid NOT NULL,
   booking_type text NOT NULL CHECK (booking_type IN ('user', 'guest')),
@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS booking_assignments (
 -- ============================================================================
 
 -- Vehicles table
-CREATE TABLE IF NOT EXISTS vehicles (
+CREATE TABLE vehicles (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   driver_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   make text NOT NULL,
@@ -237,12 +237,16 @@ CREATE TABLE IF NOT EXISTS vehicles (
   current_location_lng decimal(11,8),
   last_location_update timestamptz,
   is_active boolean DEFAULT true,
+  stripe_account_id text,
+  stripe_account_status text DEFAULT 'pending',
+  stripe_charges_enabled boolean DEFAULT false,
+  stripe_payouts_enabled boolean DEFAULT false,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
 
 -- Support workers table
-CREATE TABLE IF NOT EXISTS support_workers (
+CREATE TABLE support_workers (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   availability jsonb DEFAULT '{}',
@@ -259,13 +263,17 @@ CREATE TABLE IF NOT EXISTS support_workers (
   current_location_lng decimal(11,8),
   last_location_update timestamptz,
   is_active boolean DEFAULT true,
+  stripe_account_id text,
+  stripe_account_status text DEFAULT 'pending',
+  stripe_charges_enabled boolean DEFAULT false,
+  stripe_payouts_enabled boolean DEFAULT false,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
   UNIQUE(user_id)
 );
 
 -- Driver applications table
-CREATE TABLE IF NOT EXISTS driver_applications (
+CREATE TABLE driver_applications (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   full_name text NOT NULL,
   email text NOT NULL,
@@ -293,7 +301,7 @@ CREATE TABLE IF NOT EXISTS driver_applications (
 );
 
 -- Support worker applications table
-CREATE TABLE IF NOT EXISTS support_worker_applications (
+CREATE TABLE support_worker_applications (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   full_name text NOT NULL,
   email text NOT NULL,
@@ -321,7 +329,7 @@ CREATE TABLE IF NOT EXISTS support_worker_applications (
 -- ============================================================================
 
 -- Trip logs table
-CREATE TABLE IF NOT EXISTS trip_logs (
+CREATE TABLE trip_logs (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   booking_id uuid NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
   driver_id uuid REFERENCES users(id),
@@ -344,7 +352,7 @@ CREATE TABLE IF NOT EXISTS trip_logs (
 );
 
 -- Trip tracking table
-CREATE TABLE IF NOT EXISTS trip_tracking (
+CREATE TABLE trip_tracking (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   trip_id uuid NOT NULL REFERENCES trip_logs(id) ON DELETE CASCADE,
   lat decimal(10,8) NOT NULL,
@@ -356,7 +364,7 @@ CREATE TABLE IF NOT EXISTS trip_tracking (
 );
 
 -- Pricing logs table
-CREATE TABLE IF NOT EXISTS pricing_logs (
+CREATE TABLE pricing_logs (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   booking_id uuid NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
   calculated_fare decimal(10,2) NOT NULL,
@@ -377,7 +385,7 @@ CREATE TABLE IF NOT EXISTS pricing_logs (
 -- ============================================================================
 
 -- Payment transactions table
-CREATE TABLE IF NOT EXISTS payment_transactions (
+CREATE TABLE payment_transactions (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   booking_id uuid NOT NULL,
   booking_type text NOT NULL CHECK (booking_type IN ('user', 'guest')),
@@ -393,7 +401,7 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
 );
 
 -- Payment splits table
-CREATE TABLE IF NOT EXISTS payment_splits (
+CREATE TABLE payment_splits (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   payment_transaction_id uuid NOT NULL REFERENCES payment_transactions(id) ON DELETE CASCADE,
   recipient_type text NOT NULL CHECK (recipient_type IN ('driver', 'support_worker', 'platform')),
@@ -406,7 +414,7 @@ CREATE TABLE IF NOT EXISTS payment_splits (
 );
 
 -- Earnings summary table
-CREATE TABLE IF NOT EXISTS earnings_summary (
+CREATE TABLE earnings_summary (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   period_start date NOT NULL,
@@ -427,7 +435,7 @@ CREATE TABLE IF NOT EXISTS earnings_summary (
 -- ============================================================================
 
 -- Notifications table
-CREATE TABLE IF NOT EXISTS notifications (
+CREATE TABLE notifications (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   message text NOT NULL,
@@ -441,15 +449,15 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 -- Admin email notifications table
-CREATE TABLE IF NOT EXISTS admin_email_notifications (
+CREATE TABLE admin_email_notifications (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   recipient_email text NOT NULL,
   subject text NOT NULL,
   html_content text NOT NULL,
   booking_id uuid,
   notification_type text DEFAULT 'system',
-  email_type text DEFAULT 'notification',
-  email_status text DEFAULT 'queued',
+  email_type email_type DEFAULT 'admin_notification',
+  email_status email_status DEFAULT 'queued',
   priority integer DEFAULT 3,
   sent boolean DEFAULT false,
   sent_at timestamptz,
@@ -459,15 +467,17 @@ CREATE TABLE IF NOT EXISTS admin_email_notifications (
   max_retries integer DEFAULT 3,
   last_retry_at timestamptz,
   processing_attempts integer DEFAULT 0,
+  delivery_status_details jsonb DEFAULT '{}',
+  template_data jsonb DEFAULT '{}',
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
 
 -- Email templates table
-CREATE TABLE IF NOT EXISTS email_templates (
+CREATE TABLE email_templates (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   template_name text UNIQUE NOT NULL,
-  email_type text NOT NULL,
+  email_type email_type NOT NULL,
   subject_template text NOT NULL,
   html_template text NOT NULL,
   variables jsonb NOT NULL,
@@ -477,7 +487,7 @@ CREATE TABLE IF NOT EXISTS email_templates (
 );
 
 -- Newsletter subscribers table
-CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+CREATE TABLE newsletter_subscribers (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   email text UNIQUE NOT NULL,
   source text DEFAULT 'website',
@@ -494,7 +504,7 @@ CREATE TABLE IF NOT EXISTS newsletter_subscribers (
 -- ============================================================================
 
 -- Certifications table
-CREATE TABLE IF NOT EXISTS certifications (
+CREATE TABLE certifications (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   support_worker_id uuid NOT NULL REFERENCES support_workers(id) ON DELETE CASCADE,
   certification_type text NOT NULL,
@@ -509,7 +519,7 @@ CREATE TABLE IF NOT EXISTS certifications (
 );
 
 -- Vehicle insurance table
-CREATE TABLE IF NOT EXISTS vehicle_insurance (
+CREATE TABLE vehicle_insurance (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   vehicle_id uuid NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
   insurance_provider text NOT NULL,
@@ -528,68 +538,68 @@ CREATE TABLE IF NOT EXISTS vehicle_insurance (
 -- ============================================================================
 
 -- User and profile indexes
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
-CREATE INDEX IF NOT EXISTS idx_guest_riders_email ON guest_riders(email);
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_profiles_email ON profiles(email);
+CREATE INDEX idx_guest_riders_email ON guest_riders(email);
 
 -- Booking indexes
-CREATE INDEX IF NOT EXISTS idx_bookings_rider_id ON bookings(rider_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
-CREATE INDEX IF NOT EXISTS idx_bookings_pickup_time ON bookings(pickup_time);
-CREATE INDEX IF NOT EXISTS idx_bookings_pickup_coords ON bookings(pickup_lat, pickup_lng);
-CREATE INDEX IF NOT EXISTS idx_bookings_dropoff_coords ON bookings(dropoff_lat, dropoff_lng);
-CREATE INDEX IF NOT EXISTS idx_bookings_pickup_postcode ON bookings(pickup_postcode);
-CREATE INDEX IF NOT EXISTS idx_bookings_dropoff_postcode ON bookings(dropoff_postcode);
+CREATE INDEX idx_bookings_rider_id ON bookings(rider_id);
+CREATE INDEX idx_bookings_status ON bookings(status);
+CREATE INDEX idx_bookings_pickup_time ON bookings(pickup_time);
+CREATE INDEX idx_bookings_pickup_coords ON bookings(pickup_lat, pickup_lng);
+CREATE INDEX idx_bookings_dropoff_coords ON bookings(dropoff_lat, dropoff_lng);
+CREATE INDEX idx_bookings_pickup_postcode ON bookings(pickup_postcode);
+CREATE INDEX idx_bookings_dropoff_postcode ON bookings(dropoff_postcode);
 
-CREATE INDEX IF NOT EXISTS idx_guest_bookings_guest_rider_id ON guest_bookings(guest_rider_id);
-CREATE INDEX IF NOT EXISTS idx_guest_bookings_status ON guest_bookings(status);
-CREATE INDEX IF NOT EXISTS idx_guest_bookings_pickup_time ON guest_bookings(pickup_time);
-CREATE INDEX IF NOT EXISTS idx_guest_bookings_pickup_coords ON guest_bookings(pickup_lat, pickup_lng);
-CREATE INDEX IF NOT EXISTS idx_guest_bookings_dropoff_coords ON guest_bookings(dropoff_lat, dropoff_lng);
-CREATE INDEX IF NOT EXISTS idx_guest_bookings_pickup_postcode ON guest_bookings(pickup_postcode);
-CREATE INDEX IF NOT EXISTS idx_guest_bookings_dropoff_postcode ON guest_bookings(dropoff_postcode);
+CREATE INDEX idx_guest_bookings_guest_rider_id ON guest_bookings(guest_rider_id);
+CREATE INDEX idx_guest_bookings_status ON guest_bookings(status);
+CREATE INDEX idx_guest_bookings_pickup_time ON guest_bookings(pickup_time);
+CREATE INDEX idx_guest_bookings_pickup_coords ON guest_bookings(pickup_lat, pickup_lng);
+CREATE INDEX idx_guest_bookings_dropoff_coords ON guest_bookings(dropoff_lat, dropoff_lng);
+CREATE INDEX idx_guest_bookings_pickup_postcode ON guest_bookings(pickup_postcode);
+CREATE INDEX idx_guest_bookings_dropoff_postcode ON guest_bookings(dropoff_postcode);
 
 -- Stops and tokens indexes
-CREATE INDEX IF NOT EXISTS idx_stops_booking_id ON stops(booking_id);
-CREATE INDEX IF NOT EXISTS idx_booking_access_tokens_token ON booking_access_tokens(token);
-CREATE INDEX IF NOT EXISTS idx_booking_access_tokens_expires ON booking_access_tokens(expires_at);
+CREATE INDEX idx_stops_booking_id ON stops(booking_id);
+CREATE INDEX idx_booking_access_tokens_token ON booking_access_tokens(token);
+CREATE INDEX idx_booking_access_tokens_expires ON booking_access_tokens(expires_at);
 
 -- Service provider indexes
-CREATE INDEX IF NOT EXISTS idx_vehicles_driver_id ON vehicles(driver_id);
-CREATE INDEX IF NOT EXISTS idx_vehicles_location ON vehicles(current_location_lat, current_location_lng);
-CREATE INDEX IF NOT EXISTS idx_vehicles_license_plate ON vehicles(license_plate);
+CREATE INDEX idx_vehicles_driver_id ON vehicles(driver_id);
+CREATE INDEX idx_vehicles_location ON vehicles(current_location_lat, current_location_lng);
+CREATE INDEX idx_vehicles_license_plate ON vehicles(license_plate);
 
-CREATE INDEX IF NOT EXISTS idx_support_workers_user_id ON support_workers(user_id);
-CREATE INDEX IF NOT EXISTS idx_support_workers_location ON support_workers(current_location_lat, current_location_lng);
+CREATE INDEX idx_support_workers_user_id ON support_workers(user_id);
+CREATE INDEX idx_support_workers_location ON support_workers(current_location_lat, current_location_lng);
 
 -- Application indexes
-CREATE INDEX IF NOT EXISTS idx_driver_applications_email ON driver_applications(email);
-CREATE INDEX IF NOT EXISTS idx_driver_applications_status ON driver_applications(status);
-CREATE INDEX IF NOT EXISTS idx_support_worker_applications_email ON support_worker_applications(email);
-CREATE INDEX IF NOT EXISTS idx_support_worker_applications_status ON support_worker_applications(status);
+CREATE INDEX idx_driver_applications_email ON driver_applications(email);
+CREATE INDEX idx_driver_applications_status ON driver_applications(status);
+CREATE INDEX idx_support_worker_applications_email ON support_worker_applications(email);
+CREATE INDEX idx_support_worker_applications_status ON support_worker_applications(status);
 
 -- Trip indexes
-CREATE INDEX IF NOT EXISTS idx_trip_logs_booking_id ON trip_logs(booking_id);
-CREATE INDEX IF NOT EXISTS idx_trip_logs_driver_id ON trip_logs(driver_id);
-CREATE INDEX IF NOT EXISTS idx_trip_tracking_trip_id ON trip_tracking(trip_id);
-CREATE INDEX IF NOT EXISTS idx_trip_tracking_timestamp ON trip_tracking(timestamp);
+CREATE INDEX idx_trip_logs_booking_id ON trip_logs(booking_id);
+CREATE INDEX idx_trip_logs_driver_id ON trip_logs(driver_id);
+CREATE INDEX idx_trip_tracking_trip_id ON trip_tracking(trip_id);
+CREATE INDEX idx_trip_tracking_timestamp ON trip_tracking(timestamp);
 
 -- Payment indexes
-CREATE INDEX IF NOT EXISTS idx_payment_transactions_booking_id ON payment_transactions(booking_id);
-CREATE INDEX IF NOT EXISTS idx_payment_transactions_status ON payment_transactions(status);
-CREATE INDEX IF NOT EXISTS idx_payment_splits_transaction_id ON payment_splits(payment_transaction_id);
-CREATE INDEX IF NOT EXISTS idx_earnings_summary_user_id ON earnings_summary(user_id);
-CREATE INDEX IF NOT EXISTS idx_earnings_summary_period ON earnings_summary(period_start, period_end);
+CREATE INDEX idx_payment_transactions_booking_id ON payment_transactions(booking_id);
+CREATE INDEX idx_payment_transactions_status ON payment_transactions(status);
+CREATE INDEX idx_payment_splits_transaction_id ON payment_splits(payment_transaction_id);
+CREATE INDEX idx_earnings_summary_user_id ON earnings_summary(user_id);
+CREATE INDEX idx_earnings_summary_period ON earnings_summary(period_start, period_end);
 
 -- Communication indexes
-CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_sent ON notifications(sent);
-CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_sent_status ON admin_email_notifications(sent, delivery_status);
-CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_retry ON admin_email_notifications(retry_count, last_retry_at);
-CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_created_at ON admin_email_notifications(created_at);
-CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_notification_type ON admin_email_notifications(notification_type);
-CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_email ON newsletter_subscribers(email);
+CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX idx_notifications_sent ON notifications(sent);
+CREATE INDEX idx_admin_email_notifications_sent_status ON admin_email_notifications(sent, delivery_status);
+CREATE INDEX idx_admin_email_notifications_retry ON admin_email_notifications(retry_count, last_retry_at);
+CREATE INDEX idx_admin_email_notifications_created_at ON admin_email_notifications(created_at);
+CREATE INDEX idx_admin_email_notifications_notification_type ON admin_email_notifications(notification_type);
+CREATE INDEX idx_newsletter_subscribers_email ON newsletter_subscribers(email);
 
 -- ============================================================================
 -- ENABLE ROW LEVEL SECURITY

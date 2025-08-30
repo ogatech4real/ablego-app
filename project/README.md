@@ -791,6 +791,46 @@ export const serviceInstance = new ServiceClass();
 
 ---
 
+## 🗄️ **Recent Database Rebuild & Admin Setup**
+
+### **Database Rebuild (January 2025)**
+The database has been completely rebuilt with a comprehensive schema that includes all necessary tables, relationships, and security policies.
+
+#### **Key Improvements**
+- **Complete schema restoration** with 24 core tables
+- **Enhanced enum types** for better data consistency
+- **Comprehensive RLS policies** for secure data access
+- **Optimized indexes** for improved query performance
+- **Email system integration** with queue processing
+- **Stripe Connect integration** for payment processing
+
+#### **Migration Files**
+- **`20250101000015_complete_database_rebuild.sql`** - Complete database schema
+- **`20250101000016_create_admin_user.sql`** - Admin user setup
+
+#### **Admin User Setup**
+- **Email**: `admin@ablego.co.uk`
+- **Password**: `CareGold17`
+- **Role**: `admin`
+- **Access**: Full admin dashboard privileges
+- **Status**: Fully verified and active
+
+### **Database Schema Overview**
+The rebuilt database includes:
+- **Core tables**: users, profiles, guest_riders, guest_bookings
+- **Booking system**: bookings, stops, booking_access_tokens, booking_assignments
+- **Service providers**: vehicles, support_workers, driver_applications, support_worker_applications
+- **Trip management**: trip_logs, trip_tracking, pricing_logs
+- **Payment system**: payment_transactions, payment_splits, earnings_summary
+- **Communication**: notifications, admin_email_notifications, email_templates, newsletter_subscribers
+- **Additional**: certifications, vehicle_insurance
+
+### **Security Enhancements**
+- **Row Level Security (RLS)** enabled on all tables
+- **Role-based access control** with admin, driver, support_worker, and rider roles
+- **Comprehensive policies** for data access and modification
+- **Secure authentication** with proper user verification
+
 ## 🚨 **Error Handling & Logging**
 
 ### **Frontend Error Handling**
@@ -1003,7 +1043,7 @@ curl -X POST https://your-project.supabase.co/functions/v1/enhanced-email-proces
 
 ## 🔄 **Version History**
 
-### **Current Version**: 1.0.0
+### **Current Version**: 1.1.0
 - ✅ Complete booking system with guest and registered users
 - ✅ Multi-role authentication with admin dashboard
 - ✅ Stripe payment processing with Connect integration
@@ -1012,6 +1052,10 @@ curl -X POST https://your-project.supabase.co/functions/v1/enhanced-email-proces
 - ✅ Comprehensive admin management tools
 - ✅ Mobile-responsive design with PWA features
 - ✅ SEO optimization and performance tuning
+- ✅ **Complete database rebuild** with comprehensive schema
+- ✅ **Admin user setup** with full privileges (admin@ablego.co.uk)
+- ✅ **Enhanced RLS policies** for secure data access
+- ✅ **Email system optimization** with fallback mechanisms
 
 ### **Planned Features**
 - 🔄 SMS integration for driver notifications
@@ -1049,7 +1093,8 @@ curl -X POST https://your-project.supabase.co/functions/v1/enhanced-email-proces
 - [ ] Configure Supabase project
 - [ ] Set up Stripe account and keys
 - [ ] Configure Google Maps API
-- [ ] Run database migrations
+- [ ] **Run complete database rebuild** (20250101000015_complete_database_rebuild.sql)
+- [ ] **Create admin user** (20250101000016_create_admin_user.sql)
 - [ ] Start development server
 - [ ] Test core functionality
 
