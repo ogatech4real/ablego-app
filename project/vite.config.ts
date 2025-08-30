@@ -48,12 +48,56 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
-          supabase: ['@supabase/supabase-js'],
-          ui: ['lucide-react'],
-          animations: ['gsap']
+          // Core React libraries
+          'react-core': ['react', 'react-dom'],
+          
+          // Routing
+          'router': ['react-router-dom'],
+          
+          // Supabase and database
+          'supabase': ['@supabase/supabase-js'],
+          
+          // UI and icons
+          'ui': ['lucide-react', 'framer-motion'],
+          
+          // Maps and location services
+          'maps': ['@google/maps'],
+          
+          // Payment processing
+          'payments': ['@stripe/react-stripe-js', '@stripe/stripe-js', 'stripe'],
+          
+          // Animations and effects
+          'animations': ['gsap', 'react-intersection-observer'],
+          
+          // Utilities and helpers
+          'utils': ['react-helmet-async']
         },
+        // Optimize chunk size warnings
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
+          return `js/[name]-[hash].js`;
+        },
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.');
+          const ext = info[info.length - 1];
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+            return `images/[name]-[hash][extname]`;
+          }
+          if (/css/i.test(ext)) {
+            return `css/[name]-[hash][extname]`;
+          }
+          return `assets/[name]-[hash][extname]`;
+        }
+      },
+    },
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000,
+    // Enable minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
       },
     },
   },

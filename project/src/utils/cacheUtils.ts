@@ -2,6 +2,79 @@
  * Cache management utilities
  */
 
+// API Response Cache
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+  expiry: number;
+}
+
+class APICache {
+  private cache = new Map<string, CacheEntry>();
+  private defaultExpiry = 5 * 60 * 1000; // 5 minutes
+
+  set(key: string, data: any, expiry?: number): void {
+    const expiryTime = expiry || this.defaultExpiry;
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      expiry: expiryTime
+    });
+  }
+
+  get(key: string): any | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    const isExpired = Date.now() - entry.timestamp > entry.expiry;
+    if (isExpired) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.data;
+  }
+
+  delete(key: string): void {
+    this.cache.delete(key);
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  // Generate cache key for API requests
+  generateKey(endpoint: string, params?: any): string {
+    const paramString = params ? JSON.stringify(params) : '';
+    return `${endpoint}:${paramString}`;
+  }
+}
+
+// Global API cache instance
+export const apiCache = new APICache();
+
+// Cache decorator for API functions
+export function withCache(expiry?: number) {
+  return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
+    const method = descriptor.value;
+    descriptor.value = async function (...args: any[]) {
+      const cacheKey = apiCache.generateKey(propertyName, args);
+      const cached = apiCache.get(cacheKey);
+      
+      if (cached) {
+        console.log(`📦 Cache hit for ${propertyName}`);
+        return cached;
+      }
+
+      const result = await method.apply(this, args);
+      apiCache.set(cacheKey, result, expiry);
+      console.log(`💾 Cached result for ${propertyName}`);
+      
+      return result;
+    };
+  };
+}
+
 export const clearCache = async (): Promise<void> => {
   try {
     // Clear browser caches

@@ -1,4 +1,12 @@
 import { supabase } from '../lib/supabase';
+import { apiCache } from '../utils/cacheUtils';
+import { 
+  startPerformanceTracking, 
+  endPerformanceTracking, 
+  createErrorResponse, 
+  ERROR_CODES,
+  generateRequestId 
+} from '../utils/errorUtils';
 
 export interface AdminDashboardStats {
   dashboard_overview: {
@@ -136,42 +144,106 @@ class AdminDashboardService {
   }
 
   /**
-   * Get booking analytics for a specific period
+   * Get booking analytics with caching and performance monitoring
    */
-  async getBookingAnalytics(daysBack: number = 30): Promise<{ data: BookingAnalytics | null; error: any }> {
+  async getBookingAnalytics(days: number = 30): Promise<{ data: BookingAnalytics | null; error: any }> {
+    const requestId = startPerformanceTracking('getBookingAnalytics');
+    
     try {
+      const cacheKey = apiCache.generateKey('booking_analytics', { days });
+      const cached = apiCache.get(cacheKey);
+      if (cached) {
+        console.log('📦 Using cached booking analytics');
+        endPerformanceTracking(requestId, true);
+        return cached;
+      }
+
       const { data, error } = await supabase
-        .rpc('get_booking_analytics', { days_back: daysBack });
+        .rpc('get_booking_analytics', { days_back: days });
 
       if (error) {
         console.error('❌ Failed to get booking analytics:', error);
-        return { data: null, error };
+        const errorResponse = createErrorResponse(
+          'Failed to get booking analytics',
+          ERROR_CODES.QUERY_FAILED,
+          requestId,
+          { originalError: error.message, days },
+          { function: 'getBookingAnalytics' }
+        );
+        endPerformanceTracking(requestId, false, error.message);
+        return { data: null, error: errorResponse };
       }
 
-      return { data: data as BookingAnalytics, error: null };
+      const result = { data: data as BookingAnalytics, error: null };
+      
+      // Cache for 5 minutes (analytics data changes less frequently)
+      apiCache.set(cacheKey, result, 5 * 60 * 1000);
+      
+      endPerformanceTracking(requestId, true);
+      return result;
     } catch (error) {
       console.error('❌ Booking analytics error:', error);
-      return { data: null, error };
+      const errorResponse = createErrorResponse(
+        'Internal error getting booking analytics',
+        ERROR_CODES.INTERNAL_ERROR,
+        requestId,
+        { originalError: error instanceof Error ? error.message : 'Unknown error', days },
+        { function: 'getBookingAnalytics' }
+      );
+      endPerformanceTracking(requestId, false, error instanceof Error ? error.message : 'Unknown error');
+      return { data: null, error: errorResponse };
     }
   }
 
   /**
-   * Get user analytics
+   * Get user analytics with caching and performance monitoring
    */
   async getUserAnalytics(): Promise<{ data: UserAnalytics | null; error: any }> {
+    const requestId = startPerformanceTracking('getUserAnalytics');
+    
     try {
+      const cacheKey = apiCache.generateKey('user_analytics');
+      const cached = apiCache.get(cacheKey);
+      if (cached) {
+        console.log('📦 Using cached user analytics');
+        endPerformanceTracking(requestId, true);
+        return cached;
+      }
+
       const { data, error } = await supabase
         .rpc('get_user_analytics');
 
       if (error) {
         console.error('❌ Failed to get user analytics:', error);
-        return { data: null, error };
+        const errorResponse = createErrorResponse(
+          'Failed to get user analytics',
+          ERROR_CODES.QUERY_FAILED,
+          requestId,
+          { originalError: error.message },
+          { function: 'getUserAnalytics' }
+        );
+        endPerformanceTracking(requestId, false, error.message);
+        return { data: null, error: errorResponse };
       }
 
-      return { data: data as UserAnalytics, error: null };
+      const result = { data: data as UserAnalytics, error: null };
+      
+      // Cache for 10 minutes (user data changes slowly)
+      apiCache.set(cacheKey, result, 10 * 60 * 1000);
+      
+      endPerformanceTracking(requestId, true);
+      return result;
     } catch (error) {
       console.error('❌ User analytics error:', error);
-      return { data: null, error };
+      const errorResponse = createErrorResponse(
+        'Internal error getting user analytics',
+        ERROR_CODES.INTERNAL_ERROR,
+        requestId,
+        { originalError: error instanceof Error ? error.message : 'Unknown error' },
+        { function: 'getUserAnalytics' }
+      );
+      endPerformanceTracking(requestId, false, error instanceof Error ? error.message : 'Unknown error');
+      return { data: null, error: errorResponse };
     }
   }
 
@@ -400,10 +472,21 @@ class AdminDashboardService {
   }
 
   /**
-   * Get dashboard overview
+   * Get dashboard overview with caching and performance monitoring
    */
   async getDashboardOverview(): Promise<{ data: any | null; error: any }> {
+    const requestId = startPerformanceTracking('getDashboardOverview');
+    
     try {
+      // Check cache first
+      const cacheKey = apiCache.generateKey('dashboard_overview');
+      const cached = apiCache.get(cacheKey);
+      if (cached) {
+        console.log('📦 Using cached dashboard overview');
+        endPerformanceTracking(requestId, true);
+        return cached;
+      }
+
       const { data, error } = await supabase
         .from('admin_dashboard_overview')
         .select('*')
@@ -411,13 +494,35 @@ class AdminDashboardService {
 
       if (error) {
         console.error('❌ Failed to get dashboard overview:', error);
-        return { data: null, error };
+        const errorResponse = createErrorResponse(
+          'Failed to get dashboard overview',
+          ERROR_CODES.QUERY_FAILED,
+          requestId,
+          { originalError: error.message },
+          { function: 'getDashboardOverview' }
+        );
+        endPerformanceTracking(requestId, false, error.message);
+        return { data: null, error: errorResponse };
       }
 
-      return { data, error: null };
+      const result = { data, error: null };
+      
+      // Cache for 2 minutes (dashboard data changes frequently)
+      apiCache.set(cacheKey, result, 2 * 60 * 1000);
+      
+      endPerformanceTracking(requestId, true);
+      return result;
     } catch (error) {
       console.error('❌ Dashboard overview error:', error);
-      return { data: null, error };
+      const errorResponse = createErrorResponse(
+        'Internal error getting dashboard overview',
+        ERROR_CODES.INTERNAL_ERROR,
+        requestId,
+        { originalError: error instanceof Error ? error.message : 'Unknown error' },
+        { function: 'getDashboardOverview' }
+      );
+      endPerformanceTracking(requestId, false, error instanceof Error ? error.message : 'Unknown error');
+      return { data: null, error: errorResponse };
     }
   }
 

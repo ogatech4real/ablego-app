@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { setupScrollAnimations } from './utils/animations';
@@ -15,15 +15,9 @@ import DashboardPage from './pages/DashboardPage';
 import DriverRegistrationPage from './pages/DriverRegistrationPage';
 import SupportWorkerRegistrationPage from './pages/SupportWorkerRegistrationPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import AdminBookingsPage from './pages/admin/AdminBookingsPage';
-import AdminSupportWorkersPage from './pages/admin/AdminSupportWorkersPage';
-import AdminVehiclesPage from './pages/admin/AdminVehiclesPage';
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminApplicationsPage from './pages/admin/AdminApplicationsPage';
 import PublicDriverRegistration from './pages/PublicDriverRegistration';
 import PublicSupportWorkerRegistration from './pages/PublicSupportWorkerRegistration';
 import BookingStatusPage from './pages/BookingStatusPage';
-
 import JoinPage from './pages/JoinPage';
 import SafetyPage from './pages/SafetyPage';
 import ContactPage from './pages/ContactPage';
@@ -40,6 +34,21 @@ import RiderDashboard from './pages/dashboard/RiderDashboard';
 import DriverDashboard from './pages/dashboard/DriverDashboard';
 import SupportWorkerDashboard from './pages/dashboard/SupportWorkerDashboard';
 import AdminDashboard from './pages/dashboard/AdminDashboard';
+import LoadingSpinner from './components/LoadingSpinner';
+
+// Lazy load admin components to reduce initial bundle size
+const AdminBookingsPage = lazy(() => import('./pages/admin/AdminBookingsPage'));
+const AdminSupportWorkersPage = lazy(() => import('./pages/admin/AdminSupportWorkersPage'));
+const AdminVehiclesPage = lazy(() => import('./pages/admin/AdminVehiclesPage'));
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
+const AdminApplicationsPage = lazy(() => import('./pages/admin/AdminApplicationsPage'));
+
+// Loading component for lazy-loaded routes
+const AdminPageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <LoadingSpinner size="lg" />
+  </div>
+);
 
 function App() {
   useEffect(() => {
@@ -64,6 +73,7 @@ function App() {
       window.removeEventListener('popstate', handleRouteChange);
     };
   }, []);
+
   return (
     <ErrorBoundary>
       <Helmet>
@@ -146,29 +156,41 @@ function App() {
             <Route path="/email-confirmation" element={<EmailConfirmationPage />} />
             <Route path="/admin-setup" element={<AdminSetupGuide />} />
             <Route path="/admin-login" element={<AdminLoginPage />} />
+            
+            {/* Lazy-loaded admin routes */}
             <Route path="/admin/bookings" element={
               <AdminRoute>
-                <AdminBookingsPage />
+                <Suspense fallback={<AdminPageLoader />}>
+                  <AdminBookingsPage />
+                </Suspense>
               </AdminRoute>
             } />
             <Route path="/admin/support-workers" element={
               <AdminRoute>
-                <AdminSupportWorkersPage />
+                <Suspense fallback={<AdminPageLoader />}>
+                  <AdminSupportWorkersPage />
+                </Suspense>
               </AdminRoute>
             } />
             <Route path="/admin/vehicles" element={
               <AdminRoute>
-                <AdminVehiclesPage />
+                <Suspense fallback={<AdminPageLoader />}>
+                  <AdminVehiclesPage />
+                </Suspense>
               </AdminRoute>
             } />
             <Route path="/admin/users" element={
               <AdminRoute>
-                <AdminUsersPage />
+                <Suspense fallback={<AdminPageLoader />}>
+                  <AdminUsersPage />
+                </Suspense>
               </AdminRoute>
             } />
             <Route path="/admin/applications" element={
               <AdminRoute>
-                <AdminApplicationsPage />
+                <Suspense fallback={<AdminPageLoader />}>
+                  <AdminApplicationsPage />
+                </Suspense>
               </AdminRoute>
             } />
           </Routes>

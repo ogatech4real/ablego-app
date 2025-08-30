@@ -7,6 +7,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Email batching configuration
+const BATCH_SIZE = 5; // Process emails in batches of 5
+const BATCH_DELAY = 1000; // 1 second delay between batches
+
+// Utility function to chunk array into batches
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -18,9 +31,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    console.log('📧 Starting email queue processing...', {
+    console.log('📧 Starting email queue processing with batching...', {
       timestamp: new Date().toISOString(),
-      function: 'process-email-queue'
+      function: 'process-email-queue',
+      batch_size: BATCH_SIZE
     })
 
     // Get pending email notifications with better filtering
@@ -31,7 +45,7 @@ serve(async (req) => {
       .in('delivery_status', ['pending', 'processing'])
       .lt('retry_count', 3) // Only process emails that haven't exceeded max retries
       .order('created_at', { ascending: true })
-      .limit(10)
+      .limit(50) // Increased limit for batching
 
     if (fetchError) {
       console.error('❌ Failed to fetch pending emails:', fetchError)
@@ -52,134 +66,110 @@ serve(async (req) => {
       )
     }
 
-    console.log(`📧 Processing ${pendingEmails.length} pending emails...`)
+    console.log(`📧 Processing ${pendingEmails.length} pending emails in batches of ${BATCH_SIZE}...`)
 
-    const results = []
-    let successfulEmails = 0
-    let failedEmails = 0
+    // Split emails into batches
+    const emailBatches = chunkArray(pendingEmails, BATCH_SIZE);
+    const results = [];
+    let successfulEmails = 0;
+    let failedEmails = 0;
 
-    for (const email of pendingEmails) {
-      try {
-        // Mark email as processing
-        await supabaseClient
-          .from('admin_email_notifications')
-          .update({
-            delivery_status: 'processing',
-            processing_attempts: (email.processing_attempts || 0) + 1,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', email.id)
+    // Process each batch
+    for (let batchIndex = 0; batchIndex < emailBatches.length; batchIndex++) {
+      const batch = emailBatches[batchIndex];
+      console.log(`📦 Processing batch ${batchIndex + 1}/${emailBatches.length} with ${batch.length} emails`);
 
-        console.log('📧 PROCESSING EMAIL:', {
-          id: email.id,
-          to: email.recipient_email,
-          from: 'AbleGo Ltd <admin@ablego.co.uk>',
-          subject: email.subject,
-          booking_id: email.booking_id,
-          type: email.notification_type,
-          retry_count: email.retry_count || 0,
-          timestamp: new Date().toISOString()
-        })
-
-        // Send email using SMTP with environment variables
-        const emailResult = await sendEmailViaSMTP(email)
-
-        if (emailResult.success) {
-          // Mark email as sent
+      // Process emails in current batch concurrently
+      const batchPromises = batch.map(async (email) => {
+        try {
+          // Mark email as processing
           await supabaseClient
             .from('admin_email_notifications')
             .update({
-              sent: true,
-              sent_at: new Date().toISOString(),
-              delivery_status: 'sent',
-              delivery_error: null,
+              delivery_status: 'processing',
+              processing_attempts: (email.processing_attempts || 0) + 1,
               updated_at: new Date().toISOString()
             })
             .eq('id', email.id)
 
-          successfulEmails++
-          results.push({
+          console.log('📧 PROCESSING EMAIL:', {
             id: email.id,
-            recipient: email.recipient_email,
-            status: 'sent',
-            method: 'smtp'
-          })
-
-          console.log('✅ Email sent successfully:', {
-            id: email.id,
-            recipient: email.recipient_email,
+            to: email.recipient_email,
+            from: 'AbleGo Ltd <admin@ablego.co.uk>',
             subject: email.subject,
-            method: 'smtp'
+            booking_id: email.booking_id,
+            type: email.notification_type,
+            retry_count: email.retry_count || 0,
+            batch: batchIndex + 1,
+            timestamp: new Date().toISOString()
           })
 
-        } else {
-          // Mark email as failed
-          await supabaseClient
-            .from('admin_email_notifications')
-            .update({
-              delivery_status: 'failed',
-              delivery_error: emailResult.error,
-              retry_count: (email.retry_count || 0) + 1,
-              last_retry_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', email.id)
+          // Send email using SMTP with environment variables
+          const emailResult = await sendEmailViaSMTP(email)
 
+          if (emailResult.success) {
+            // Mark email as sent
+            await supabaseClient
+              .from('admin_email_notifications')
+              .update({
+                sent: true,
+                sent_at: new Date().toISOString(),
+                delivery_status: 'sent',
+                delivery_error: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', email.id)
+
+            successfulEmails++
+            return { success: true, emailId: email.id, recipient: email.recipient_email }
+          } else {
+            // Mark email as failed
+            await supabaseClient
+              .from('admin_email_notifications')
+              .update({
+                delivery_status: 'failed',
+                delivery_error: emailResult.error,
+                retry_count: (email.retry_count || 0) + 1,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', email.id)
+
+            failedEmails++
+            return { success: false, emailId: email.id, error: emailResult.error }
+          }
+        } catch (error) {
+          console.error('❌ Error processing email:', error)
           failedEmails++
-          results.push({
-            id: email.id,
-            recipient: email.recipient_email,
-            status: 'failed',
-            error: emailResult.error
-          })
-
-          console.error('❌ Email sending failed:', {
-            id: email.id,
-            recipient: email.recipient_email,
-            error: emailResult.error
-          })
+          return { success: false, emailId: email.id, error: error.message }
         }
+      })
 
-      } catch (emailError) {
-        console.error('❌ Email processing error:', emailError)
+      // Wait for all emails in current batch to complete
+      const batchResults = await Promise.all(batchPromises)
+      results.push(...batchResults)
 
-        // Mark email as failed
-        await supabaseClient
-          .from('admin_email_notifications')
-          .update({
-            delivery_status: 'failed',
-            delivery_error: emailError.message,
-            retry_count: (email.retry_count || 0) + 1,
-            last_retry_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', email.id)
-
-        failedEmails++
-        results.push({
-          id: email.id,
-          recipient: email.recipient_email,
-          status: 'failed',
-          error: emailError.message
-        })
+      // Add delay between batches to prevent overwhelming SMTP server
+      if (batchIndex < emailBatches.length - 1) {
+        console.log(`⏳ Waiting ${BATCH_DELAY}ms before next batch...`)
+        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY))
       }
     }
 
-    console.log('📧 Email processing completed:', {
-      total: pendingEmails.length,
+    console.log('✅ Email queue processing completed:', {
+      total_processed: results.length,
       successful: successfulEmails,
       failed: failedEmails,
+      batches_processed: emailBatches.length,
       timestamp: new Date().toISOString()
     })
 
     return new Response(
       JSON.stringify({
         message: 'Email queue processing completed',
-        summary: {
-          total_processed: pendingEmails.length,
-          successful: successfulEmails,
-          failed: failedEmails
-        },
+        processed: results.length,
+        successful: successfulEmails,
+        failed: failedEmails,
+        batches: emailBatches.length,
         results: results,
         timestamp: new Date().toISOString()
       }),
