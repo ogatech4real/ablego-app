@@ -62,7 +62,7 @@ const AddressInput: React.FC<AddressInputProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Get autocomplete predictions with enhanced real-time updates
+  // Get autocomplete predictions
   const getPredictions = useCallback(async (input: string) => {
     if (!input || input.length < 2) {
       setPredictions([]);
@@ -76,33 +76,12 @@ const AddressInput: React.FC<AddressInputProps> = ({
     setErrorMessage('');
 
     try {
-      console.log('🔍 Getting predictions for:', input);
       const results = await googlePlacesService.getAutocompletePredictions(input);
-      console.log('✅ Predictions received:', results.length);
-      
       setPredictions(results);
       setShowPredictions(results.length > 0);
-      
-      if (results.length === 0) {
-        // Don't show error for no results, just clear predictions
-        setShowPredictions(false);
-      }
     } catch (error) {
-      console.error('❌ Autocomplete error:', error);
-      
-      // More specific error messages
-      if (error instanceof Error) {
-        if (error.message.includes('not ready')) {
-          setErrorMessage('Loading address suggestions... Please try again in a moment.');
-        } else if (error.message.includes('not initialized')) {
-          setErrorMessage('Initializing address service... Please try again.');
-        } else {
-          setErrorMessage('Unable to fetch address suggestions. Please try again.');
-        }
-      } else {
-        setErrorMessage('Unable to fetch address suggestions. Please try again.');
-      }
-      
+      console.error('Autocomplete error:', error);
+      setErrorMessage('Unable to fetch address suggestions');
       setValidationStatus('invalid');
       setShowPredictions(false);
     } finally {
@@ -110,13 +89,12 @@ const AddressInput: React.FC<AddressInputProps> = ({
     }
   }, []);
 
-  // Enhanced debounced prediction fetching with real-time updates
+  // Debounced prediction fetching
   useEffect(() => {
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // Clear predictions if input is too short
     if (value.length < 2) {
       setPredictions([]);
       setShowPredictions(false);
@@ -124,12 +102,9 @@ const AddressInput: React.FC<AddressInputProps> = ({
       return;
     }
 
-    // More responsive debouncing for better UX
-    const delay = value.length <= 3 ? 50 : 30; // Even faster response
-    
     debounceTimeoutRef.current = setTimeout(() => {
       getPredictions(value);
-    }, delay);
+    }, 200);
 
     return () => {
       if (debounceTimeoutRef.current) {
