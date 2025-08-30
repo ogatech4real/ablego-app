@@ -5,6 +5,8 @@ export interface GuestBookingData {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
+  createAccount?: boolean;
+  password?: string;
   pickup: AddressDetails;
   dropoff: AddressDetails;
   stops?: AddressDetails[];
@@ -28,20 +30,36 @@ export interface GuestBookingResult {
   guest_rider_id: string;
   success: boolean;
   message?: string;
+  user_account?: {
+    success: boolean;
+    user_id?: string;
+    account_status?: string;
+    message?: string;
+    action?: string;
+    error?: string;
+  };
 }
 
 class GuestBookingService {
   /**
-   * Create a guest booking with rider
+   * Create a guest booking with optional account creation
    */
   async createGuestBooking(bookingData: GuestBookingData): Promise<GuestBookingResult> {
     try {
+      console.log('📝 Creating guest booking with account creation:', {
+        guest_email: bookingData.guestEmail,
+        create_account: bookingData.createAccount,
+        has_password: !!bookingData.password
+      });
+
       // Call the Supabase function to create guest booking
       const { data, error } = await supabase.functions.invoke('create-guest-booking', {
         body: {
           guest_name: bookingData.guestName,
           guest_email: bookingData.guestEmail,
           guest_phone: bookingData.guestPhone,
+          create_account: bookingData.createAccount || false,
+          password: bookingData.password,
           booking_data: {
             pickup_address: bookingData.pickup.formattedAddress,
             pickup_lat: bookingData.pickup.latitude,
@@ -77,7 +95,7 @@ class GuestBookingService {
       });
 
       if (error) {
-        console.error('Guest booking error:', error);
+        console.error('❌ Guest booking error:', error);
         return {
           booking_id: '',
           access_token: '',
@@ -88,11 +106,17 @@ class GuestBookingService {
       }
 
       if (data && data.success) {
+        console.log('✅ Guest booking created successfully:', {
+          booking_id: data.booking_id,
+          user_account: data.user_account
+        });
+
         return {
           booking_id: data.booking_id,
           access_token: data.access_token,
           guest_rider_id: data.guest_rider_id,
-          success: true
+          success: true,
+          user_account: data.user_account
         };
       } else {
         return {
@@ -100,11 +124,12 @@ class GuestBookingService {
           access_token: '',
           guest_rider_id: '',
           success: false,
-          message: data?.message || 'Failed to create booking'
+          message: data?.message || 'Failed to create booking',
+          user_account: data?.user_account
         };
       }
     } catch (error) {
-      console.error('Guest booking service error:', error);
+      console.error('❌ Guest booking service error:', error);
       return {
         booking_id: '',
         access_token: '',
@@ -139,7 +164,7 @@ class GuestBookingService {
 
       return { data, error: null };
     } catch (error) {
-      console.error('Error fetching guest booking:', error);
+      console.error('❌ Error fetching guest booking:', error);
       return { data: null, error };
     }
   }
@@ -160,7 +185,7 @@ class GuestBookingService {
 
       return { data, error };
     } catch (error) {
-      console.error('Error fetching guest booking:', error);
+      console.error('❌ Error fetching guest booking:', error);
       return { data: null, error };
     }
   }
@@ -185,7 +210,7 @@ class GuestBookingService {
 
       return { data, error };
     } catch (error) {
-      console.error('Error updating guest booking status:', error);
+      console.error('❌ Error updating guest booking status:', error);
       return { data: null, error };
     }
   }
@@ -213,7 +238,58 @@ class GuestBookingService {
 
       return { data: data || [], error };
     } catch (error) {
-      console.error('Error fetching all guest bookings:', error);
+      console.error('❌ Error fetching all guest bookings:', error);
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Check if user account exists for email
+   */
+  async checkUserAccountStatus(email: string): Promise<{ data: any | null; error: any }> {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_user_account_status', { user_email: email });
+
+      return { data, error };
+    } catch (error) {
+      console.error('❌ Error checking user account status:', error);
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Upgrade guest booking to user account
+   */
+  async upgradeGuestToUserAccount(
+    bookingId: string,
+    password: string
+  ): Promise<{ data: any | null; error: any }> {
+    try {
+      const { data, error } = await supabase
+        .rpc('upgrade_guest_to_user_account', {
+          guest_booking_id: bookingId,
+          password_hash: password
+        });
+
+      return { data, error };
+    } catch (error) {
+      console.error('❌ Error upgrading guest to user account:', error);
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Merge guest bookings into user account
+   */
+  async mergeGuestBookingsToUser(userId: string): Promise<{ data: any | null; error: any }> {
+    try {
+      const { data, error } = await supabase
+        .rpc('merge_guest_bookings_to_user', { user_id: userId });
+
+      return { data, error };
+    } catch (error) {
+      console.error('❌ Error merging guest bookings to user:', error);
       return { data: null, error };
     }
   }

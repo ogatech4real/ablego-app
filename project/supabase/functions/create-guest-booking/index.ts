@@ -10,6 +10,8 @@ interface GuestBookingRequest {
   guest_name: string;
   guest_email: string;
   guest_phone: string;
+  create_account?: boolean;
+  password?: string;
   booking_data: {
     pickup_address: string;
     pickup_lat: number;
@@ -61,6 +63,14 @@ serve(async (req) => {
 
     const request: GuestBookingRequest = await req.json()
 
+    console.log('📝 Creating guest booking with account creation:', {
+      guest_email: request.guest_email,
+      guest_name: request.guest_name,
+      create_account: request.create_account,
+      has_password: !!request.password,
+      timestamp: new Date().toISOString()
+    })
+
     // Validate required fields
     if (!request.guest_name || !request.guest_email || !request.guest_phone) {
       return new Response(
@@ -88,6 +98,67 @@ serve(async (req) => {
       )
     }
 
+    // Check if user account creation is requested
+    let userAccountResult = null;
+    let userAccountStatus = 'none';
+
+    if (request.create_account && request.password) {
+      console.log('🔐 Creating user account for guest booking...')
+      
+      try {
+        // Check if user already exists
+        const { data: existingUser, error: userCheckError } = await supabaseClient
+          .from('users')
+          .select('id, email, role')
+          .eq('email', request.guest_email)
+          .single()
+
+        if (existingUser) {
+          // User already exists - link guest booking to existing account
+          userAccountStatus = 'linked_existing';
+          userAccountResult = {
+            success: true,
+            user_id: existingUser.id,
+            account_status: 'linked',
+            message: 'Linked to existing user account',
+            action: 'linked_existing'
+          };
+          
+          console.log('✅ Linked to existing user account:', existingUser.id)
+        } else {
+          // Create new user account using the enhanced function
+          const { data: accountResult, error: accountError } = await supabaseClient
+            .rpc('create_user_account_from_guest', {
+              guest_email: request.guest_email,
+              guest_name: request.guest_name,
+              guest_phone: request.guest_phone,
+              password_hash: request.password, // This will be hashed by Supabase Auth
+              guest_rider_id: null // Will be set after guest rider creation
+            })
+
+          if (accountError) {
+            console.error('❌ User account creation failed:', accountError)
+            userAccountStatus = 'failed';
+            userAccountResult = {
+              success: false,
+              error: accountError.message
+            };
+          } else {
+            userAccountStatus = 'created';
+            userAccountResult = accountResult;
+            console.log('✅ User account created successfully:', accountResult)
+          }
+        }
+      } catch (accountError) {
+        console.error('❌ User account creation error:', accountError)
+        userAccountStatus = 'failed';
+        userAccountResult = {
+          success: false,
+          error: accountError.message
+        };
+      }
+    }
+
     // Create or get guest rider
     const { data: guestRider, error: guestRiderError } = await supabaseClient
       .from('guest_riders')
@@ -95,6 +166,7 @@ serve(async (req) => {
         name: request.guest_name,
         email: request.guest_email,
         phone: request.guest_phone,
+        linked_user_id: userAccountResult?.user_id || null,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'email'
@@ -103,7 +175,7 @@ serve(async (req) => {
       .single()
 
     if (guestRiderError) {
-      console.error('Guest rider creation error:', guestRiderError)
+      console.error('❌ Guest rider creation error:', guestRiderError)
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -116,11 +188,23 @@ serve(async (req) => {
       )
     }
 
+    // If user account was created, update the guest rider with the user ID
+    if (userAccountResult?.success && userAccountResult?.user_id && !guestRider.linked_user_id) {
+      await supabaseClient
+        .from('guest_riders')
+        .update({
+          linked_user_id: userAccountResult.user_id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', guestRider.id)
+    }
+
     // Create guest booking
     const { data: guestBooking, error: guestBookingError } = await supabaseClient
       .from('guest_bookings')
       .insert({
         guest_rider_id: guestRider.id,
+        linked_user_id: userAccountResult?.user_id || null,
         pickup_address: request.booking_data.pickup_address,
         pickup_lat: request.booking_data.pickup_lat,
         pickup_lng: request.booking_data.pickup_lng,
@@ -149,7 +233,7 @@ serve(async (req) => {
       .single()
 
     if (guestBookingError) {
-      console.error('Guest booking creation error:', guestBookingError)
+      console.error('❌ Guest booking creation error:', guestBookingError)
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -177,7 +261,7 @@ serve(async (req) => {
         .insert(stopsData)
 
       if (stopsError) {
-        console.error('Error creating stops:', stopsError)
+        console.error('❌ Error creating stops:', stopsError)
         // Don't fail the booking for stops error
       }
     }
@@ -196,7 +280,7 @@ serve(async (req) => {
       .single()
 
     if (tokenError) {
-      console.error('Token creation error:', tokenError)
+      console.error('❌ Token creation error:', tokenError)
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -222,6 +306,8 @@ serve(async (req) => {
           payment_method: request.booking_data.payment_method,
           access_token: accessToken,
           tracking_url: trackingUrl,
+          user_account_created: userAccountResult?.success || false,
+          user_account_status: userAccountStatus,
           booking_details: {
             pickup_address: guestBooking.pickup_address,
             dropoff_address: guestBooking.dropoff_address,
@@ -236,20 +322,31 @@ serve(async (req) => {
         }
       })
       
-      console.log('Booking confirmation email sent successfully to:', request.guest_email)
+      console.log('✅ Booking confirmation email sent successfully to:', request.guest_email)
     } catch (emailError) {
-      console.error('Email sending failed (non-critical):', emailError)
+      console.error('❌ Email sending failed (non-critical):', emailError)
       // Don't fail the booking for email errors
     }
 
+    // Prepare response
+    const response = {
+      success: true,
+      booking_id: guestBooking.id,
+      guest_rider_id: guestRider.id,
+      access_token: accessToken,
+      message: 'Booking created successfully',
+      user_account: userAccountResult
+    }
+
+    console.log('✅ Guest booking created successfully:', {
+      booking_id: guestBooking.id,
+      guest_rider_id: guestRider.id,
+      user_account_status: userAccountStatus,
+      timestamp: new Date().toISOString()
+    })
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        booking_id: guestBooking.id,
-        guest_rider_id: guestRider.id,
-        access_token: accessToken,
-        message: 'Booking created successfully'
-      }),
+      JSON.stringify(response),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -257,7 +354,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Guest booking function error:', error)
+    console.error('❌ Guest booking function error:', error)
     return new Response(
       JSON.stringify({ 
         success: false,

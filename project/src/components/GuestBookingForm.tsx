@@ -331,6 +331,8 @@ const GuestBookingForm: React.FC = () => {
         guestName: guestInfo.name,
         guestEmail: guestInfo.email,
         guestPhone: guestInfo.phone,
+        createAccount: wantsAccount,
+        password: wantsAccount ? guestInfo.password : undefined,
         pickup: pickupDetails!,
         dropoff: dropoffDetails!,
         stops: stops.filter(stop => stop.details).map(stop => stop.details!),
@@ -358,6 +360,16 @@ const GuestBookingForm: React.FC = () => {
           access_token: result.access_token,
           reference: result.booking_id // Use booking_id as reference
         });
+        
+        // Handle account creation result
+        if (result.user_account) {
+          if (result.user_account.success) {
+            console.log('✅ User account created/linked successfully:', result.user_account);
+          } else {
+            console.warn('⚠️ User account creation failed:', result.user_account.error);
+            // Don't fail the booking for account creation issues
+          }
+        }
       } else {
         throw new Error(result.message || 'Booking creation failed');
       }
