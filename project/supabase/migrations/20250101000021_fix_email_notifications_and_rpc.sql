@@ -298,11 +298,46 @@ GRANT EXECUTE ON FUNCTION process_email_queue() TO authenticated;
 -- FIX RLS POLICIES FOR EDGE FUNCTIONS
 -- ============================================================================
 
--- Drop existing policies that might be blocking edge functions
+-- Clean up any existing policies that might conflict
+-- This ensures we have a clean slate for policy creation
+DO $$
+DECLARE
+    policy_record RECORD;
+BEGIN
+    -- Drop all policies on users table
+    FOR policy_record IN 
+        SELECT policyname 
+        FROM pg_policies 
+        WHERE tablename = 'users' AND schemaname = 'public'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON users', policy_record.policyname);
+    END LOOP;
+    
+    -- Drop all policies on admin_email_notifications table
+    FOR policy_record IN 
+        SELECT policyname 
+        FROM pg_policies 
+        WHERE tablename = 'admin_email_notifications' AND schemaname = 'public'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON admin_email_notifications', policy_record.policyname);
+    END LOOP;
+    
+    RAISE LOG 'Cleaned up existing policies on users and admin_email_notifications tables';
+END $$;
+
+-- Drop ALL existing policies on users table to avoid conflicts
 DROP POLICY IF EXISTS "Service role can read all users" ON users;
 DROP POLICY IF EXISTS "Service role can create users" ON users;
 DROP POLICY IF EXISTS "Anonymous users can read users by email" ON users;
 DROP POLICY IF EXISTS "Anonymous users can create users" ON users;
+DROP POLICY IF EXISTS "Authenticated users can read all users" ON users;
+DROP POLICY IF EXISTS "Authenticated users can update own user" ON users;
+DROP POLICY IF EXISTS "Admin full access" ON users;
+DROP POLICY IF EXISTS "Users can read own profile" ON users;
+DROP POLICY IF EXISTS "Users can update own profile" ON users;
+DROP POLICY IF EXISTS "Edge functions can read all users" ON users;
+DROP POLICY IF EXISTS "Edge functions can create users" ON users;
+DROP POLICY IF EXISTS "Edge functions can update users" ON users;
 
 -- Create comprehensive policies for users table
 CREATE POLICY "Edge functions can read all users" ON users
@@ -327,9 +362,12 @@ CREATE POLICY "Authenticated users can update own user" ON users
   USING (id = auth.uid())
   WITH CHECK (id = auth.uid());
 
--- Fix admin_email_notifications policies
+-- Drop ALL existing policies on admin_email_notifications table to avoid conflicts
 DROP POLICY IF EXISTS "Service role can manage email notifications" ON admin_email_notifications;
 DROP POLICY IF EXISTS "Authenticated users can manage email notifications" ON admin_email_notifications;
+DROP POLICY IF EXISTS "Edge functions can manage email notifications" ON admin_email_notifications;
+DROP POLICY IF EXISTS "Admin full access" ON admin_email_notifications;
+DROP POLICY IF EXISTS "Anonymous users can manage email notifications" ON admin_email_notifications;
 
 CREATE POLICY "Edge functions can manage email notifications" ON admin_email_notifications
   FOR ALL TO anon
