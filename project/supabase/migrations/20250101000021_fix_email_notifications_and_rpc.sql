@@ -22,6 +22,7 @@
 
 -- Drop and recreate get_rider_dashboard_data with better error handling
 DROP FUNCTION IF EXISTS get_rider_dashboard_data(uuid);
+DROP FUNCTION IF EXISTS get_rider_dashboard_data(uuid, text);
 CREATE OR REPLACE FUNCTION get_rider_dashboard_data(user_id uuid)
 RETURNS json AS $$
 DECLARE
@@ -87,6 +88,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Drop and recreate get_admin_dashboard_data with better error handling
 DROP FUNCTION IF EXISTS get_admin_dashboard_data();
+DROP FUNCTION IF EXISTS get_admin_dashboard_data(text);
 CREATE OR REPLACE FUNCTION get_admin_dashboard_data()
 RETURNS json AS $$
 DECLARE
@@ -208,6 +210,9 @@ CREATE TRIGGER trigger_email_queue_processing
 -- ============================================================================
 -- CREATE MANUAL EMAIL PROCESSING FUNCTION
 -- ============================================================================
+
+-- Drop existing function first to avoid return type conflicts
+DROP FUNCTION IF EXISTS process_email_queue();
 
 -- Create function to manually process email queue
 CREATE OR REPLACE FUNCTION process_email_queue()
@@ -369,6 +374,9 @@ WHERE role IS NULL;
 -- CREATE EMAIL PROCESSING SCHEDULER FUNCTION
 -- ============================================================================
 
+-- Drop existing function first to avoid conflicts
+DROP FUNCTION IF EXISTS schedule_email_processing();
+
 -- Create function to schedule email processing
 CREATE OR REPLACE FUNCTION schedule_email_processing()
 RETURNS void AS $$
@@ -389,6 +397,10 @@ GRANT EXECUTE ON FUNCTION schedule_email_processing() TO authenticated;
 -- ============================================================================
 -- CREATE BOOKING CONFIRMATION HELPER FUNCTION
 -- ============================================================================
+
+-- Drop existing function first to avoid conflicts
+DROP FUNCTION IF EXISTS complete_booking_confirmation(uuid, text);
+DROP FUNCTION IF EXISTS complete_booking_confirmation(uuid);
 
 -- Create function to handle complete booking confirmation
 CREATE OR REPLACE FUNCTION complete_booking_confirmation(
