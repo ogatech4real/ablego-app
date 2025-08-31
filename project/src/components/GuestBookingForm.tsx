@@ -30,7 +30,7 @@ import PaymentMethodSelector from './PaymentMethodSelector';
 import type { FareBreakdown as FareBreakdownType } from '../types/pricing';
 import type { TravelInfo as TravelInfoType } from '../services/googleMapsService';
 import type { AddressDetails } from '../services/googlePlacesService';
-import { scrollToActionZone } from '../utils/scrollUtils';
+import { scrollToActionZone, scrollToFormError } from '../utils/scrollUtils';
 
 interface Stop {
   id: string;
@@ -71,7 +71,12 @@ const GuestBookingForm: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [bookingResult, setBookingResult] = useState<{ id: string; access_token: string; reference: string } | null>(null);
+  const [bookingResult, setBookingResult] = useState<{ 
+    booking_id: string; 
+    access_token: string; 
+    reference: string;
+    payment_method: 'cash_bank' | 'stripe';
+  } | null>(null);
   const [wantsAccount, setWantsAccount] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -295,7 +300,8 @@ const GuestBookingForm: React.FC = () => {
       setBookingResult({
         booking_id: paymentIntent.metadata?.booking_id || 'unknown',
         access_token: 'payment_confirmed',
-        tracking_url: `/booking-status?payment_intent=${paymentIntent.id}`
+        reference: paymentIntent.id,
+        payment_method: 'stripe'
       });
       
       setCurrentStep('confirmation');
@@ -373,9 +379,10 @@ const GuestBookingForm: React.FC = () => {
       if (result.success) {
         console.log('✅ Booking created successfully:', result);
         setBookingResult({
-          id: result.booking_id,
+          booking_id: result.booking_id,
           access_token: result.access_token,
-          reference: result.booking_id // Use booking_id as reference
+          reference: result.booking_id, // Use booking_id as reference
+          payment_method: 'cash_bank'
         });
         
         // Handle account creation result
@@ -1071,151 +1078,185 @@ const GuestBookingForm: React.FC = () => {
         </div>
       )}
 
-      {currentStep === 'confirmation' && bookingResult && (
+      {currentStep === 'confirmation' && (
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 text-center confirmation">
-            {/* Success Icon and Header */}
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-green-600" />
-            </div>
-            
-            <h3 className="text-3xl font-bold text-gray-900 mb-4">
-              ✅ Your Ride Has Been Booked!
-            </h3>
-            
-            <p className="text-gray-600 mb-8 text-lg">
-              A confirmation has been sent to your email with journey and payment details.
-              <br />
-              <span className="font-semibold text-green-600">
-                Your assigned driver and support worker (if selected) will contact you shortly.
-              </span>
-            </p>
-
-            {/* Trip Summary Card */}
-            <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-6 mb-8 border border-blue-200">
-              <h4 className="font-bold text-gray-900 mb-4 text-lg">Trip Summary</h4>
-              <div className="grid md:grid-cols-2 gap-4 text-left">
-                <div className="space-y-3">
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                    <div>
-                      <p className="text-sm text-gray-600">Pickup</p>
-                      <p className="font-medium text-gray-900">{pickup}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                    <div>
-                      <p className="text-sm text-gray-600">Drop-off</p>
-                      <p className="font-medium text-gray-900">{dropoff}</p>
-                    </div>
-                  </div>
+            {bookingResult ? (
+              <>
+                {/* Success Icon and Header */}
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <CheckCircle className="w-10 h-10 text-green-600" />
                 </div>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-600">Pickup Time</p>
-                    <p className="font-medium text-gray-900">{pickupTime.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Payment Method</p>
-                    <p className="font-medium text-gray-900">
-                      {bookingResult.payment_method === 'cash_bank' ? 'Cash on Pickup' : 'Paid via Card'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Booking Details */}
-            <div className="bg-gray-50 rounded-xl p-6 mb-8">
-              <h4 className="font-semibold text-gray-900 mb-4">Booking Details</h4>
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Booking ID:</span>
-                  <code className="bg-gray-200 px-2 py-1 rounded text-gray-800 font-mono">
-                    {bookingResult.booking_id.slice(0, 8).toUpperCase()}
-                  </code>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Amount:</span>
-                  <span className="font-bold text-gray-900">
-                    {fareBreakdown ? pricingService.formatCurrency(fareBreakdown.estimatedTotal) : ''}
+                
+                <h3 className="text-3xl font-bold text-gray-900 mb-4">
+                  ✅ Your Ride Has Been Booked!
+                </h3>
+                
+                <p className="text-gray-600 mb-8 text-lg">
+                  A confirmation has been sent to your email with journey and payment details.
+                  <br />
+                  <span className="font-semibold text-green-600">
+                    Your assigned driver and support worker (if selected) will contact you shortly.
                   </span>
+                </p>
+
+                {/* Trip Summary Card */}
+                <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-6 mb-8 border border-blue-200">
+                  <h4 className="font-bold text-gray-900 mb-4 text-lg">Trip Summary</h4>
+                  <div className="grid md:grid-cols-2 gap-4 text-left">
+                    <div className="space-y-3">
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                        <div>
+                          <p className="text-sm text-gray-600">Pickup</p>
+                          <p className="font-medium text-gray-900">{pickup}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                        <div>
+                          <p className="text-sm text-gray-600">Drop-off</p>
+                          <p className="font-medium text-gray-900">{dropoff}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm text-gray-600">Pickup Time</p>
+                        <p className="font-medium text-gray-900">{pickupTime.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Payment Method</p>
+                        <p className="font-medium text-gray-900">
+                          {bookingResult.payment_method === 'cash_bank' ? 'Cash on Pickup' : 'Paid via Card'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Booking Details */}
+                <div className="bg-gray-50 rounded-xl p-6 mb-8">
+                  <h4 className="font-semibold text-gray-900 mb-4">Booking Details</h4>
+                  <div className="grid md:grid-cols-2 gap-4 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Booking ID:</span>
+                      <code className="bg-gray-200 px-2 py-1 rounded text-gray-800 font-mono">
+                        {bookingResult.booking_id.slice(0, 8).toUpperCase()}
+                      </code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Amount:</span>
+                      <span className="font-bold text-gray-900">
+                        {fareBreakdown ? pricingService.formatCurrency(fareBreakdown.estimatedTotal) : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                  <a
+                    href={`/booking-status?token=${bookingResult.access_token}`}
+                    className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-teal-700 transition-all duration-300 transform hover:scale-105 shadow-lg text-center"
+                  >
+                    <Shield className="inline-block w-5 h-5 mr-2" />
+                    Track My Ride
+                  </a>
+                  <button
+                    onClick={() => window.location.href = '/'}
+                    className="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all duration-300"
+                  >
+                    Return to Homepage
+                  </button>
+                </div>
+
+                {/* What Happens Next */}
+                <div className="bg-green-50 rounded-xl p-6 mb-6 border border-green-200">
+                  <h4 className="font-semibold text-green-900 mb-4 text-lg">What happens next:</h4>
+                  <div className="grid md:grid-cols-2 gap-4 text-left">
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm text-green-800">
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
+                        <span>📧 Confirmation email sent with payment instructions</span>
+                      </div>
+                      <div className="flex items-center text-sm text-green-800">
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
+                        <span>💳 Complete payment using your preferred method</span>
+                      </div>
+                      <div className="flex items-center text-sm text-green-800">
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
+                        <span>🚗 Driver automatically assigned and dispatched</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm text-green-800">
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
+                        <span>📱 Driver details sent via SMS before pickup</span>
+                      </div>
+                      <div className="flex items-center text-sm text-green-800">
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
+                        <span>🗺️ Live GPS tracking available during journey</span>
+                      </div>
+                      <div className="flex items-center text-sm text-green-800">
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
+                        <span>✅ Safe and compassionate transport experience</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pro Tip */}
+                <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                  <p className="text-blue-800 text-sm font-medium">
+                    💡 <strong>Pro Tip:</strong> Bookmark your tracking link or save this email for easy access to your booking status
+                  </p>
+                </div>
+
+                {/* Create Account CTA */}
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-2">
+                    Want to track all your bookings in one place?
+                  </p>
+                  <Link
+                    to="/signup"
+                    className="text-blue-600 hover:text-blue-700 font-medium text-sm underline"
+                  >
+                    Create a free account →
+                  </Link>
+                </div>
+              </>
+            ) : (
+              // Fallback for when bookingResult is null
+              <div className="text-center">
+                <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertTriangle className="w-10 h-10 text-yellow-600" />
+                </div>
+                
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                  Booking Status Unavailable
+                </h3>
+                
+                <p className="text-gray-600 mb-8">
+                  We're having trouble loading your booking details. Please check your email for confirmation or contact support.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button
+                    onClick={() => window.location.href = '/'}
+                    className="flex-1 px-6 py-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Return to Homepage
+                  </button>
+                  <button
+                    onClick={() => setCurrentStep('booking')}
+                    className="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+                  >
+                    Try Again
+                  </button>
                 </div>
               </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
-              <a
-                href={`/booking-status?token=${bookingResult.access_token}`}
-                className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-teal-700 transition-all duration-300 transform hover:scale-105 shadow-lg text-center"
-              >
-                <Shield className="inline-block w-5 h-5 mr-2" />
-                Track My Ride
-              </a>
-              <button
-                onClick={() => window.location.href = '/'}
-                className="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all duration-300"
-              >
-                Return to Homepage
-              </button>
-            </div>
-
-            {/* What Happens Next */}
-            <div className="bg-green-50 rounded-xl p-6 mb-6 border border-green-200">
-              <h4 className="font-semibold text-green-900 mb-4 text-lg">What happens next:</h4>
-              <div className="grid md:grid-cols-2 gap-4 text-left">
-                <div className="space-y-2">
-                  <div className="flex items-center text-sm text-green-800">
-                    <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
-                    <span>📧 Confirmation email sent with payment instructions</span>
-                  </div>
-                  <div className="flex items-center text-sm text-green-800">
-                    <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
-                    <span>💳 Complete payment using your preferred method</span>
-                  </div>
-                  <div className="flex items-center text-sm text-green-800">
-                    <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
-                    <span>🚗 Driver automatically assigned and dispatched</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center text-sm text-green-800">
-                    <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
-                    <span>📱 Driver details sent via SMS before pickup</span>
-                  </div>
-                  <div className="flex items-center text-sm text-green-800">
-                    <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
-                    <span>🗺️ Live GPS tracking available during journey</span>
-                  </div>
-                  <div className="flex items-center text-sm text-green-800">
-                    <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0" />
-                    <span>✅ Safe and compassionate transport experience</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Pro Tip */}
-            <div className="bg-blue-50 rounded-lg p-4 mb-6">
-              <p className="text-blue-800 text-sm font-medium">
-                💡 <strong>Pro Tip:</strong> Bookmark your tracking link or save this email for easy access to your booking status
-              </p>
-            </div>
-
-            {/* Create Account CTA */}
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-2">
-                Want to track all your bookings in one place?
-              </p>
-              <Link
-                to="/signup"
-                className="text-blue-600 hover:text-blue-700 font-medium text-sm underline"
-              >
-                Create a free account →
-              </Link>
-            </div>
+            )}
           </div>
         </div>
       )}
