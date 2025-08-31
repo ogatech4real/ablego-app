@@ -79,10 +79,10 @@ const BookingPage: React.FC = () => {
           <p className="text-blue-100 mb-6">Our 24/7 support team is here to help</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 
-              href="tel:08001234567" 
+              href="tel:01642089958" 
               className="px-6 py-3 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors"
             >
-              Call: 0800 123 4567
+              Call: 01642 089 958
             </a>
             <a 
               href="mailto:hello@ablego.co.uk" 

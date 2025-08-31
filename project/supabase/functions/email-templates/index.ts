@@ -6,7 +6,7 @@ export const EMAIL_CONFIG = {
   company: 'AbleGo Ltd',
   website: 'https://ablego.co.uk',
   support: {
-    phone: '0800 123 4567',
+    phone: '01642 089 958',
     email: 'admin@ablego.co.uk'
   },
   bankDetails: {

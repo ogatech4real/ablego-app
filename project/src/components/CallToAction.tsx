@@ -138,7 +138,7 @@ const CallToAction: React.FC = () => {
           <div className="inline-flex flex-col sm:flex-row items-center gap-6 bg-white/15 backdrop-blur-sm rounded-2xl px-8 py-6">
             <div className="flex items-center text-white">
               <Phone className="w-5 h-5 mr-2" />
-              <span className="font-medium">0800 123 4567</span>
+                              <span className="font-medium">01642 089 958</span>
             </div>
             <div className="w-px h-6 bg-white/30 hidden sm:block"></div>
             <div className="flex items-center text-white">

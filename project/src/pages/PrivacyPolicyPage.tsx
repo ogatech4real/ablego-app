@@ -246,8 +246,8 @@ const PrivacyPolicyPage: React.FC = () => {
                   <Phone className="w-5 h-5 text-blue-600 mr-3" />
                   <div>
                     <p className="font-semibold text-gray-900">Phone</p>
-                    <a href="tel:08001234567" className="text-blue-600 hover:underline">
-                      0800 123 4567
+                                <a href="tel:01642089958" className="text-blue-600 hover:underline">
+              01642 089 958
                     </a>
                   </div>
                 </div>

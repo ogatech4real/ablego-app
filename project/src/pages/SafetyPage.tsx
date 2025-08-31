@@ -223,10 +223,10 @@ const SafetyPage: React.FC = () => {
                   Emergency Services: 999
                 </a>
                 <a 
-                  href="tel:08001234567" 
+                  href="tel:01642089958" 
                   className="px-8 py-4 border-2 border-white text-white rounded-xl font-semibold hover:bg-white/10 transition-colors"
                 >
-                  AbleGo Emergency: 0800 123 4567
+                  AbleGo Emergency: 01642 089 958
                 </a>
               </div>
             </div>

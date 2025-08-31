@@ -211,7 +211,7 @@ const JoinPage: React.FC = () => {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
-              href="tel:08001234567" 
+              href="tel:01642089958" 
               to="/register-driver"
               onClick={() => {
                 setTimeout(() => scrollToActionZone('.registration-form, .driver-registration'), 100);
@@ -219,7 +219,7 @@ const JoinPage: React.FC = () => {
               className="px-8 py-4 bg-white text-teal-600 rounded-xl font-semibold hover:bg-teal-50 transition-colors flex items-center justify-center"
             >
               <Phone className="w-5 h-5 mr-2" />
-              Call: 0800 123 4567
+              Call: 01642 089 958
             </Link>
             <Link 
               href="mailto:join@ablego.co.uk" 

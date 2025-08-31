@@ -41,7 +41,7 @@ INSERT INTO profiles (
   '00000000-0000-0000-0000-000000000001',
   'admin@ablego.co.uk',
   'AbleGo Administrator',
-  '08001234567',
+  '01642089958',
   true,
   true,
   now(),

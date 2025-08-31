@@ -240,7 +240,7 @@ serve(async (req) => {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                   <div>
                     <strong style="color: #92400e;">📞 Phone:</strong><br>
-                    <a href="tel:08001234567" style="color: #b45309; text-decoration: none; font-weight: bold;">0800 123 4567</a>
+                    <a href="tel:01642089958" style="color: #b45309; text-decoration: none; font-weight: bold;">01642 089 958</a>
                   </div>
                   <div>
                     <strong style="color: #92400e;">📧 Email:</strong><br>

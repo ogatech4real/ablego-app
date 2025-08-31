@@ -268,7 +268,7 @@ Pickup: ${new Date(booking.pickup_time).toLocaleTimeString()} from ${booking.pic
 
 Track live: ${Deno.env.get('SITE_URL') || 'https://ablego.co.uk'}/booking-status?token=${booking.access_token}
 
-Questions? Call 0800 123 4567
+Questions? Call 01642 089 958
 - AbleGo Team
     `
 

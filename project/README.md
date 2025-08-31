@@ -1013,7 +1013,7 @@ curl -X POST https://your-project.supabase.co/functions/v1/enhanced-email-proces
 
 ### **Technical Support**
 - **Email**: admin@ablego.co.uk
-- **Phone**: 0800 123 4567
+- **Phone**: 01642 089 958
 - **Documentation**: This README file
 - **Issue Tracking**: Via repository issues
 

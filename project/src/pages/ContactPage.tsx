@@ -213,8 +213,8 @@ const ContactPage: React.FC = () => {
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-1">Phone Support</h3>
                       <p className="text-gray-600 mb-2">24/7 customer service and emergency support</p>
-                      <a href="tel:08001234567" className="text-blue-600 font-medium hover:underline">
-                        0800 123 4567
+                                  <a href="tel:01642089958" className="text-blue-600 font-medium hover:underline">
+              01642 089 958
                       </a>
                     </div>
                   </div>
@@ -280,10 +280,10 @@ const ContactPage: React.FC = () => {
                     Join as Partner
                   </a>
                   <a 
-                    href="tel:08001234567" 
+                    href="tel:01642089958" 
                     className="block w-full px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors text-center"
                   >
-                    Emergency: 0800 123 4567
+                    Emergency: 01642 089 958
                   </a>
                 </div>
               </div>
@@ -311,7 +311,7 @@ const ContactPage: React.FC = () => {
                   How do I book a ride with AbleGo?
                 </h3>
                 <p className="text-gray-600">
-                  You can book through our website, mobile app, or by calling 0800 123 4567. 
+                  You can book through our website, mobile app, or by calling 01642 089 958. 
                   Simply enter your pickup and drop-off locations, select any accessibility features needed, 
                   and choose the number of support workers required.
                 </p>
