@@ -3,12 +3,13 @@ import { useState, useEffect } from 'react';
 type Theme = 'light' | 'dark';
 
 export const useTheme = () => {
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>('dark'); // Default to dark mode
 
   useEffect(() => {
-    // Get theme from localStorage or default to light
+    // Get theme from localStorage or default to dark
     const savedTheme = localStorage.getItem('theme') as Theme;
-    const initialTheme = savedTheme || 'light';
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = savedTheme || (systemPrefersDark ? 'dark' : 'dark'); // Always default to dark
     
     setTheme(initialTheme);
     applyTheme(initialTheme);
@@ -25,6 +26,12 @@ export const useTheme = () => {
     
     // Also update the data attribute for better CSS targeting
     root.setAttribute('data-theme', newTheme);
+    
+    // Update meta theme-color for mobile browsers
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', newTheme === 'dark' ? '#0f172a' : '#ffffff');
+    }
   };
 
   const toggleTheme = () => {

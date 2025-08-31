@@ -1,24 +1,49 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/AbleGo.png" />
-    <link rel="apple-touch-icon" href="/AbleGo.png" />
+    <link rel="icon" type="image/svg+xml" href="/AbleGo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="color-scheme" content="dark light" />
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/Animated_Background_AbleGo.mp4" as="video" type="video/mp4" />
+    <link rel="preload" href="/AbleGo.png" as="image" type="image/png" />
+    
+    <!-- Preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/AbleGo.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/AbleGo.png" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/AbleGo.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/AbleGo.png" />
+    
+    <!-- SEO Meta Tags -->
     <meta name="description" content="AbleGo provides safe, supportive transport services with trained companions for individuals with health challenges, disabilities, and vulnerabilities across the UK." />
-    <meta name="keywords" content="accessible transport, disability transport, elderly transport, medical transport, UK, support workers, compassionate care" />
-    <meta name="author" content="AbleGo" />
+    <meta name="keywords" content="accessible transport, disability transport, supportive transport, trained companions, UK transport, wheelchair accessible, medical transport" />
+    <meta name="author" content="AbleGo Ltd" />
+    <meta name="robots" content="index, follow" />
     
     <!-- Open Graph Meta Tags -->
+    <meta property="og:type" content="website" />
     <meta property="og:title" content="AbleGo - Inclusive Transport with Compassion" />
     <meta property="og:description" content="Book safe, supportive rides with trained companions. From door to destination — we're with you." />
-    <meta property="og:type" content="website" />
     <meta property="og:url" content="https://ablego.co.uk" />
+    <meta property="og:site_name" content="AbleGo" />
     <meta property="og:image" content="https://ablego.co.uk/AbleGo.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="AbleGo - Inclusive Transport with Compassion" />
-    <meta property="og:site_name" content="AbleGo" />
     <meta property="og:locale" content="en_GB" />
     
     <!-- Twitter Card Meta Tags -->
@@ -26,98 +51,88 @@
     <meta name="twitter:title" content="AbleGo - Inclusive Transport with Compassion" />
     <meta name="twitter:description" content="Book safe, supportive rides with trained companions. From door to destination — we're with you." />
     <meta name="twitter:image" content="https://ablego.co.uk/AbleGo.png" />
-    <meta name="twitter:image:alt" content="AbleGo - Inclusive Transport with Compassion" />
-    <meta name="twitter:site" content="@ablego" />
-    <meta name="twitter:creator" content="@ablego" />
     
-    <!-- LinkedIn Meta Tags -->
-    <meta property="linkedin:title" content="AbleGo - Inclusive Transport with Compassion" />
-    <meta property="linkedin:description" content="Book safe, supportive rides with trained companions. From door to destination — we're with you." />
-    <meta property="linkedin:image" content="https://ablego.co.uk/AbleGo.png" />
-    
-    <!-- WhatsApp Meta Tags -->
-    <meta property="whatsapp:title" content="AbleGo - Inclusive Transport with Compassion" />
-    <meta property="whatsapp:description" content="Book safe, supportive rides with trained companions. From door to destination — we're with you." />
-    <meta property="whatsapp:image" content="https://ablego.co.uk/AbleGo.png" />
-    
-    <!-- Additional Favicon Sizes -->
-    <link rel="icon" type="image/png" sizes="16x16" href="/AbleGo.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/AbleGo.png" />
-    <link rel="icon" type="image/png" sizes="96x96" href="/AbleGo.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/AbleGo.png" />
-    <link rel="shortcut icon" href="/AbleGo.png" />
-    
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#3B82F6" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="AbleGo" />
-    <meta name="msapplication-TileColor" content="#3B82F6" />
-    <meta name="msapplication-TileImage" content="/AbleGo.png" />
-    
-    <!-- Preconnect to external domains -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://images.pexels.com" />
-    <link rel="preconnect" href="https://maps.googleapis.com" />
-    <link rel="preconnect" href="https://js.stripe.com" />
-    <link rel="preconnect" href="https://m.stripe.network" />
-    
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    
-    <!-- Structured Data for Rich Snippets -->
+    <!-- Structured Data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Organization",
-      "name": "AbleGo",
-      "description": "Inclusive transport services with trained companions for individuals with health challenges, disabilities, and vulnerabilities",
+      "name": "AbleGo Ltd",
       "url": "https://ablego.co.uk",
       "logo": "https://ablego.co.uk/AbleGo.png",
       "image": "https://ablego.co.uk/AbleGo.png",
-              "telephone": "01642 089 958",
+      "telephone": "01642 089 958",
       "email": "hello@ablego.co.uk",
       "address": {
         "@type": "PostalAddress",
-        "addressLocality": "Middlesbrough",
-        "addressCountry": "GB"
+        "addressCountry": "GB",
+        "addressRegion": "Middlesbrough"
       },
       "sameAs": [
-        "https://www.facebook.com/share/19oLrpnUBQ/",
-        "https://x.com/ablego",
-        "https://www.instagram.com/ablego_ventures",
-        "https://www.linkedin.com/in/ablego-ventures-57a8ba378/"
+        "https://ablego.co.uk"
       ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "01642 089 958",
+        "contactType": "customer service",
+        "availableLanguage": "English"
+      },
       "serviceType": "Accessible Transport Services",
-      "areaServed": {
-        "@type": "Country",
-        "name": "United Kingdom"
-      }
+      "description": "AbleGo provides safe, supportive transport services with trained companions for individuals with health challenges, disabilities, and vulnerabilities across the UK.",
+      "foundingDate": "2024",
+      "numberOfEmployees": "50-100"
     }
     </script>
     
-    <!-- Google Maps API -->
-    <script>
-      window.initGoogleMaps = function() {
-        window.googleMapsLoaded = true;
-        window.dispatchEvent(new Event('google-maps-loaded'));
-      };
+    <!-- Additional Service Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "name": "Accessible Transport Service",
+      "provider": {
+        "@type": "Organization",
+        "name": "AbleGo Ltd"
+      },
+      "description": "Safe, supportive transport services with trained companions for individuals with disabilities and vulnerabilities.",
+      "areaServed": {
+        "@type": "Country",
+        "name": "United Kingdom"
+      },
+      "serviceType": "Transportation",
+      "category": "Accessibility Services"
+    }
     </script>
-    <script async defer 
-      src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_MAPS_API_KEY%&libraries=places&callback=initGoogleMaps">
-    </script>
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
     
     <title>AbleGo - Inclusive Transport with Compassion</title>
     
     <style>
+      /* Prevent flash of unstyled content */
+      html {
+        color-scheme: dark;
+      }
+      
       body {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
         line-height: 1.6;
         scroll-behavior: smooth;
+        background-color: #0f172a;
+        color: #f8fafc;
+      }
+      
+      /* Dark mode by default */
+      :root {
+        color-scheme: dark;
+      }
+      
+      /* Light mode styles (will be applied when light theme is active) */
+      html[data-theme="light"] {
+        color-scheme: light;
+      }
+      
+      html[data-theme="light"] body {
+        background-color: #ffffff;
+        color: #1f2937;
       }
       
       /* Accessibility improvements */
@@ -146,10 +161,20 @@
         outline: 2px solid #3B82F6;
         outline-offset: 2px;
       }
+      
+      /* Loading state */
+      .loading {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+      }
+      
+      .loaded {
+        opacity: 1;
+      }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" class="loading"></div>
     <script type="module" src="/src/main.tsx"></script>
     
     <!-- Service Worker Registration -->
@@ -164,6 +189,15 @@
             });
         });
       }
+      
+      // Remove loading class when app is ready
+      window.addEventListener('load', function() {
+        const root = document.getElementById('root');
+        if (root) {
+          root.classList.remove('loading');
+          root.classList.add('loaded');
+        }
+      });
     </script>
     
   </body>

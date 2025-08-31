@@ -12,11 +12,11 @@ const Hero: React.FC = () => {
   const [showVideo, setShowVideo] = useState(true);
 
   useEffect(() => {
-    // Check for reduced motion preference and mobile
+    // Check for reduced motion preference only
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const isMobile = window.innerWidth < 768;
     
-    if (prefersReducedMotion || isMobile) {
+    // Always show video unless user prefers reduced motion
+    if (prefersReducedMotion) {
       setShowVideo(false);
     }
 
@@ -85,18 +85,18 @@ const Hero: React.FC = () => {
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="auto"
           aria-hidden="true"
         >
           <source src="/Animated_Background_AbleGo.mp4" type="video/mp4" />
           {/* Fallback for browsers that don't support video */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-teal-50"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-teal-50 dark:from-dark-900 dark:via-dark-800 dark:to-dark-700"></div>
         </video>
       ) : (
-        /* Fallback Animated Background for Mobile/Reduced Motion */
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-teal-50">
+        /* Fallback Animated Background for Reduced Motion */
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-teal-50 dark:from-dark-900 dark:via-dark-800 dark:to-dark-700">
           {/* Subtle SVG Background */}
-          <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 1200 800" fill="none" aria-hidden="true">
+          <svg className="absolute inset-0 w-full h-full opacity-20 dark:opacity-10" viewBox="0 0 1200 800" fill="none" aria-hidden="true">
             <defs>
               <linearGradient id="fallbackGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
@@ -115,32 +115,32 @@ const Hero: React.FC = () => {
           </svg>
           
           {/* Static floating icons */}
-          <div className="absolute top-20 left-20 text-blue-400 opacity-30" aria-hidden="true">
+          <div className="absolute top-20 left-20 text-blue-400 opacity-30 dark:text-blue-300" aria-hidden="true">
             <Heart className="w-8 h-8" />
           </div>
-          <div className="absolute top-32 right-32 text-teal-400 opacity-30" aria-hidden="true">
+          <div className="absolute top-32 right-32 text-teal-400 opacity-30 dark:text-teal-300" aria-hidden="true">
             <Shield className="w-10 h-10" />
           </div>
-          <div className="absolute bottom-40 left-40 text-blue-300 opacity-30" aria-hidden="true">
+          <div className="absolute bottom-40 left-40 text-blue-300 opacity-30 dark:text-blue-200" aria-hidden="true">
             <Users className="w-6 h-6" />
           </div>
         </div>
       )}
       
       {/* Overlay for better text readability */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-transparent to-black/20"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-transparent to-black/20 dark:from-black/50 dark:to-black/40"></div>
 
       <div className="container mx-auto px-6 relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="text-center lg:text-left">
-            <h1 className="hero-title text-5xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+            <h1 className="hero-title text-5xl lg:text-7xl font-bold text-white dark:text-gray-50 mb-6 leading-tight">
               Inclusive Transport with{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-600">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400 dark:from-blue-300 dark:to-teal-300">
                 Compassion
               </span>
             </h1>
             
-            <p className="hero-subtitle text-xl lg:text-2xl text-gray-600 mb-8 leading-relaxed">
+            <p className="hero-subtitle text-xl lg:text-2xl text-gray-100 dark:text-gray-200 mb-8 leading-relaxed">
               Book safe, supportive rides with trained companions. 
               From door to destination — we're with you.
             </p>
@@ -158,7 +158,7 @@ const Hero: React.FC = () => {
               </Link>
               <Link 
                 to="/register-driver"
-                className="px-8 py-4 bg-white text-blue-600 rounded-full text-lg font-semibold border-2 border-blue-600 hover:bg-blue-50 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl text-center"
+                className="px-8 py-4 bg-white dark:bg-dark-800 text-blue-600 dark:text-blue-400 rounded-full text-lg font-semibold border-2 border-blue-600 dark:border-blue-400 hover:bg-blue-50 dark:hover:bg-dark-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl text-center"
               >
                 <Users className="inline-block w-5 h-5 mr-2" />
                 Register as Driver
@@ -175,21 +175,21 @@ const Hero: React.FC = () => {
 
           <div ref={iconsRef} className="relative">
             <div className="grid grid-cols-3 gap-8 max-w-md mx-auto">
-              <div className="accessibility-icon flex flex-col items-center p-6 bg-white rounded-2xl shadow-lg">
-                <Wheelchair className="w-12 h-12 text-blue-600 mb-3" />
-                <span className="text-sm font-medium text-gray-700">Accessible</span>
+              <div className="accessibility-icon flex flex-col items-center p-6 bg-white dark:bg-dark-800 rounded-2xl shadow-lg dark:shadow-xl">
+                <Wheelchair className="w-12 h-12 text-blue-600 dark:text-blue-400 mb-3" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Accessible</span>
               </div>
-              <div className="accessibility-icon flex flex-col items-center p-6 bg-white rounded-2xl shadow-lg">
-                <Heart className="w-12 h-12 text-rose-500 mb-3" />
-                <span className="text-sm font-medium text-gray-700">Caring</span>
+              <div className="accessibility-icon flex flex-col items-center p-6 bg-white dark:bg-dark-800 rounded-2xl shadow-lg dark:shadow-xl">
+                <Heart className="w-12 h-12 text-rose-500 dark:text-rose-400 mb-3" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Caring</span>
               </div>
-              <div className="accessibility-icon flex flex-col items-center p-6 bg-white rounded-2xl shadow-lg">
-                <Shield className="w-12 h-12 text-green-600 mb-3" />
-                <span className="text-sm font-medium text-gray-700">Safe</span>
+              <div className="accessibility-icon flex flex-col items-center p-6 bg-white dark:bg-dark-800 rounded-2xl shadow-lg dark:shadow-xl">
+                <Shield className="w-12 h-12 text-green-600 dark:text-green-400 mb-3" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Safe</span>
               </div>
-              <div className="accessibility-icon flex flex-col items-center p-6 bg-white rounded-2xl shadow-lg col-span-3">
-                <Clock className="w-12 h-12 text-teal-600 mb-3" />
-                <span className="text-sm font-medium text-gray-700">Always Available</span>
+              <div className="accessibility-icon flex flex-col items-center p-6 bg-white dark:bg-dark-800 rounded-2xl shadow-lg dark:shadow-xl col-span-3">
+                <Clock className="w-12 h-12 text-teal-600 dark:text-teal-400 mb-3" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Always Available</span>
               </div>
             </div>
           </div>

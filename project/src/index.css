@@ -8,13 +8,12 @@
     @apply transition-colors duration-300;
   }
   
-  .dark {
-    color-scheme: dark;
+  body {
+    @apply bg-white dark:bg-dark-900 text-gray-900 dark:text-gray-100 transition-colors duration-300;
   }
   
-  /* Dark mode background gradients */
-  .dark body {
-    @apply bg-dark-900 text-gray-100;
+  .dark {
+    color-scheme: dark;
   }
   
   /* Dark mode card backgrounds */
@@ -22,20 +21,24 @@
     @apply bg-dark-800 border-dark-700;
   }
   
-  /* Dark mode text colors */
+  /* Dark mode text colors with better contrast */
   .dark .text-gray-900 {
-    @apply text-gray-100;
+    @apply text-gray-50;
   }
   
   .dark .text-gray-800 {
-    @apply text-gray-200;
+    @apply text-gray-100;
   }
   
   .dark .text-gray-700 {
-    @apply text-gray-300;
+    @apply text-gray-200;
   }
   
   .dark .text-gray-600 {
+    @apply text-gray-300;
+  }
+  
+  .dark .text-gray-500 {
     @apply text-gray-400;
   }
   
@@ -48,6 +51,10 @@
     @apply border-dark-600;
   }
   
+  .dark .border-gray-400 {
+    @apply border-dark-500;
+  }
+  
   /* Dark mode form inputs */
   .dark input,
   .dark textarea,
@@ -58,7 +65,7 @@
   .dark input:focus,
   .dark textarea:focus,
   .dark select:focus {
-    @apply border-blue-500 ring-blue-500;
+    @apply border-blue-500 ring-blue-500 ring-opacity-50;
   }
   
   /* Dark mode hover states */
@@ -68,6 +75,10 @@
   
   .dark .hover\:bg-gray-100:hover {
     @apply bg-dark-600;
+  }
+  
+  .dark .hover\:bg-gray-200:hover {
+    @apply bg-dark-500;
   }
   
   /* Dark mode gradient backgrounds */
@@ -86,6 +97,72 @@
   .dark .bg-gray-100 {
     @apply bg-dark-700;
   }
+  
+  .dark .bg-gray-200 {
+    @apply bg-dark-600;
+  }
+  
+  /* Dark mode shadows */
+  .dark .shadow-lg {
+    @apply shadow-dark-900/50;
+  }
+  
+  .dark .shadow-xl {
+    @apply shadow-dark-900/60;
+  }
+  
+  /* Dark mode backdrop blur */
+  .dark .backdrop-blur-md {
+    @apply backdrop-blur-md bg-dark-800/80;
+  }
+  
+  /* Dark mode button states */
+  .dark .bg-blue-50 {
+    @apply bg-blue-900/20;
+  }
+  
+  .dark .bg-teal-50 {
+    @apply bg-teal-900/20;
+  }
+  
+  .dark .bg-purple-50 {
+    @apply bg-purple-900/20;
+  }
+  
+  .dark .hover\:bg-blue-50:hover {
+    @apply bg-blue-900/30;
+  }
+  
+  .dark .hover\:bg-teal-50:hover {
+    @apply bg-teal-900/30;
+  }
+  
+  .dark .hover\:bg-purple-50:hover {
+    @apply bg-purple-900/30;
+  }
+  
+  /* Dark mode modal backgrounds */
+  .dark .bg-black.bg-opacity-50 {
+    @apply bg-black bg-opacity-70;
+  }
+  
+  /* Dark mode navigation specific styles */
+  .dark .navbar {
+    @apply bg-dark-800/95 backdrop-blur-md;
+  }
+  
+  .dark .navbar.scrolled {
+    @apply bg-dark-800/95 shadow-lg;
+  }
+  
+  /* Dark mode accessibility improvements */
+  .dark .focus\:ring-blue-500:focus {
+    @apply ring-blue-400 ring-opacity-50;
+  }
+  
+  .dark .focus\:ring-offset-2:focus {
+    @apply ring-offset-dark-800;
+  }
 }
 
 /* Smooth transitions for theme changes */
@@ -93,24 +170,62 @@
   @apply transition-colors duration-300;
 }
 
-/* Ensure theme toggle is always visible */
+/* Enhanced theme toggle styling */
 .theme-toggle {
   background: white !important;
   border: 2px solid #e5e7eb !important;
   color: #374151 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
 .dark .theme-toggle {
-  background: #1f2937 !important;
-  border: 2px solid #4b5563 !important;
+  background: #1e293b !important;
+  border: 2px solid #475569 !important;
   color: #fbbf24 !important;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2) !important;
 }
 
 .theme-toggle:hover {
   transform: scale(1.1) !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25) !important;
 }
 
 .dark .theme-toggle:hover {
-  box-shadow: 0 10px 25px rgba(251, 191, 36, 0.3) !important;
+  box-shadow: 0 8px 25px rgba(251, 191, 36, 0.3) !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .dark .bg-dark-800 {
+    @apply bg-black;
+  }
+  
+  .dark .text-gray-100 {
+    @apply text-white;
+  }
+  
+  .dark .border-dark-700 {
+    @apply border-white;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    @apply transition-none duration-0;
+  }
+  
+  .theme-toggle:hover {
+    transform: none !important;
+  }
+}
+
+/* Focus visible improvements */
+*:focus-visible {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
+}
+
+.dark *:focus-visible {
+  outline-color: #60A5FA;
 }

@@ -80,7 +80,7 @@ const AboutPage: React.FC = () => {
     },
     {
       name: "Adewale Ogabi",
-      description: "Adewale is a Full Stack Developer & Automation Engineer bridging AI and IIoT to build smart, scalable systems in energy, health, and industrial tech. Driving digital transformation end-to-end.",
+      description: "Adewale is a Software Developer & Automation Engineer bridging AI and IIoT to build smart, scalable systems in energy, health, and industrial tech. Driving digital transformation end-to-end.",
       image: "/Adewale Ogabi.jpg",
       linkedin: "https://www.linkedin.com/in/ogabiadewale/",
       email: "adewale@ablego.co.uk"

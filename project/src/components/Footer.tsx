@@ -98,128 +98,96 @@ const Footer: React.FC = () => {
               </p>
             </div>
             <div>
-              <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-4">
+              <form onSubmit={handleSubscribe} className="flex gap-2">
                 <input
                   type="email"
                   value={email}
                   onChange={handleEmailChange}
-                  disabled={isSubmitting}
-                  required
                   placeholder="Enter your email"
-                  className="flex-1 px-4 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 placeholder-white/70 text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+                  className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent"
+                  required
                 />
-                <button 
+                <button
                   type="submit"
-                  disabled={isSubmitting || !email.trim()}
-                  className="px-6 py-3 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isSubmitting}
+                  className="px-6 py-3 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Subscribing...
-                    </>
-                  ) : (
-                    <>
-                      Subscribe
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </>
-                  )}
+                  {isSubmitting ? 'Subscribing...' : 'Subscribe'}
                 </button>
               </form>
               
-              {/* Feedback Messages */}
-              {(error || successMessage) && (
-                <div className="mt-4">
-                  {error && (
-                    <div className="bg-red-500/20 border border-red-400/30 rounded-lg p-3 newsletter-error">
-                      <p className="text-red-100 text-sm">{error}</p>
-                    </div>
-                  )}
-                  {successMessage && (
-                    <div className="bg-green-500/20 border border-green-400/30 rounded-lg p-3 newsletter-success">
-                      <p className="text-green-100 text-sm">{successMessage}</p>
-                    </div>
-                  )}
-                </div>
+              {error && (
+                <p className="text-red-200 text-sm mt-2 newsletter-error">
+                  {error}
+                </p>
               )}
               
-              <p className="text-blue-200 text-xs mt-3">
-                We respect your privacy. Unsubscribe at any time. 
-                <Link to="/privacy-policy" className="underline hover:text-white">
-                  Privacy Policy
-                </Link>
-              </p>
+              {successMessage && (
+                <p className="text-green-200 text-sm mt-2 newsletter-success">
+                  {successMessage}
+                </p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Footer Content */}
-        <div className="grid lg:grid-cols-6 gap-8">
-          {/* Brand Section */}
-          <div className="lg:col-span-2">
-            <Link to="/" className="flex items-center mb-6 hover:opacity-80 transition-opacity">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-teal-600 rounded-lg flex items-center justify-center mr-3">
-                <Heart className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold">AbleGo</span>
-            </Link>
-            
-            <p className="text-gray-300 dark:text-gray-400 mb-6 leading-relaxed">
-              Compassionate transport services designed for individuals with health challenges, 
-              disabilities, and vulnerabilities. Safe, supportive, and always there when you need us.
+        {/* Footer Links */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+          {/* Company Info */}
+          <div>
+            <div className="flex items-center space-x-3 mb-4">
+              <img
+                src="/AbleGo.png"
+                alt="AbleGo Logo"
+                className="h-8 w-8 object-contain"
+              />
+              <span className="text-xl font-bold">AbleGo</span>
+            </div>
+            <p className="text-gray-300 mb-4">
+              Inclusive transport services with trained companions for individuals with health challenges, disabilities, and vulnerabilities.
             </p>
-
-            {/* Contact Info */}
-            <div className="space-y-3">
-              <div className="flex items-center text-gray-300 dark:text-gray-400">
-                <Phone className="w-5 h-5 mr-3 text-blue-400" />
-                <span>01642 089 958</span>
-              </div>
-              <div className="flex items-center text-gray-300 dark:text-gray-400">
-                <Mail className="w-5 h-5 mr-3 text-blue-400" />
-                <span>hello@ablego.co.uk</span>
-              </div>
-              <div className="flex items-center text-gray-300 dark:text-gray-400">
-                <MapPin className="w-5 h-5 mr-3 text-blue-400" />
-                <span>Middlesbrough, United Kingdom</span>
-              </div>
+            <div className="flex space-x-4">
+              {socialLinks.map((social) => (
+                <a
+                  key={social.name}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors duration-300"
+                  aria-label={social.name}
+                >
+                  <social.icon className="w-5 h-5" />
+                </a>
+              ))}
             </div>
           </div>
 
-          {/* Links Sections */}
+          {/* Company Links */}
           <div>
-            <h4 className="text-lg font-semibold mb-6">Company</h4>
-            <ul className="space-y-3">
+            <h4 className="text-lg font-semibold mb-4">Company</h4>
+            <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
-                  {link.isExternal ? (
-                    <a
-                      href={link.href}
-                      className="text-gray-300 hover:text-white transition-colors hover:underline"
-                    >
-                      {link.name}
-                    </a>
-                  ) : (
-                    <Link
-                      to={link.href}
-                      className="text-gray-300 dark:text-gray-400 hover:text-white dark:hover:text-gray-200 transition-colors hover:underline"
-                    >
-                      {link.name}
-                    </Link>
-                  )}
+                  <Link
+                    to={link.href}
+                    className="text-gray-300 hover:text-white transition-colors duration-300"
+                  >
+                    {link.name}
+                  </Link>
                 </li>
               ))}
             </ul>
           </div>
 
+          {/* Services Links */}
           <div>
-            <h4 className="text-lg font-semibold mb-6">Services</h4>
-            <ul className="space-y-3">
+            <h4 className="text-lg font-semibold mb-4">Services</h4>
+            <ul className="space-y-2">
               {footerLinks.services.map((link) => (
                 <li key={link.name}>
                   <Link
                     to={link.href}
-                    className="text-gray-300 hover:text-white transition-colors hover:underline"
+                    className="text-gray-300 hover:text-white transition-colors duration-300"
                   >
                     {link.name}
                   </Link>
@@ -228,14 +196,15 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
+          {/* Support Links */}
           <div>
-            <h4 className="text-lg font-semibold mb-6">Support</h4>
-            <ul className="space-y-3">
+            <h4 className="text-lg font-semibold mb-4">Support</h4>
+            <ul className="space-y-2">
               {footerLinks.support.map((link) => (
                 <li key={link.name}>
                   <Link
                     to={link.href}
-                    className="text-gray-300 hover:text-white transition-colors hover:underline"
+                    className="text-gray-300 hover:text-white transition-colors duration-300"
                   >
                     {link.name}
                   </Link>
@@ -243,77 +212,65 @@ const Footer: React.FC = () => {
               ))}
             </ul>
           </div>
+        </div>
 
-          <div>
-            <h4 className="text-lg font-semibold mb-6">Legal</h4>
-            <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    to={link.href}
-                    className="text-gray-300 hover:text-white transition-colors hover:underline"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+        {/* Contact Information */}
+        <div className="border-t border-gray-800 pt-8">
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="flex items-center space-x-3">
+              <Phone className="w-5 h-5 text-blue-400" />
+              <div>
+                <p className="text-sm text-gray-400">Phone</p>
+                <a href="tel:01642089958" className="text-white hover:text-blue-400 transition-colors duration-300">
+                  01642 089 958
+                </a>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <Mail className="w-5 h-5 text-blue-400" />
+              <div>
+                <p className="text-sm text-gray-400">Email</p>
+                <a href="mailto:hello@ablego.co.uk" className="text-white hover:text-blue-400 transition-colors duration-300">
+                  hello@ablego.co.uk
+                </a>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <MapPin className="w-5 h-5 text-blue-400" />
+              <div>
+                <p className="text-sm text-gray-400">Location</p>
+                <p className="text-white">Middlesbrough, UK</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Bottom Footer */}
-      <div className="border-t border-gray-800 dark:border-dark-800">
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            {/* Copyright */}
-            <div className="text-gray-400 dark:text-gray-500 text-center md:text-left">
-              <p>&copy; 2025 AbleGo. All rights reserved.</p>
-              <p className="text-sm mt-1">
-                Registered in England and Wales. Company No. 16619305
-              </p>
+      <div className="border-t border-gray-800">
+        <div className="container mx-auto px-6 py-6">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            <div className="flex items-center space-x-2 text-gray-400">
+              <Heart className="w-4 h-4 text-red-400" />
+              <span>Made with compassion for our community</span>
             </div>
-
-            {/* Social Links */}
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-400 dark:text-gray-500 text-sm mr-2">Follow us:</span>
-              {socialLinks.map((social) => {
-                const Icon = social.icon;
-                return (
-                  <a
-                    key={social.name}
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-10 h-10 bg-gray-800 dark:bg-dark-800 rounded-full flex items-center justify-center hover:bg-blue-600 dark:hover:bg-blue-600 transition-colors group"
-                    aria-label={social.name}
-                  >
-                    <Icon className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-white" />
-                  </a>
-                );
-              })}
+            
+            <div className="flex items-center space-x-6 text-sm text-gray-400">
+              {footerLinks.legal.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.href}
+                  className="hover:text-white transition-colors duration-300"
+                >
+                  {link.name}
+                </Link>
+              ))}
             </div>
-          </div>
-
-          {/* Trust Badges */}
-          <div className="flex justify-center items-center mt-8 pt-8 border-t border-gray-800 dark:border-dark-800">
-            <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-400 dark:text-gray-500">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span>GDPR Compliant</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span>Fully Insured</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span>DBS Checked Staff</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span>Accessibility Certified</span>
-              </div>
+            
+            <div className="text-gray-400 text-sm">
+              © 2024 AbleGo Ltd. All rights reserved.
             </div>
           </div>
         </div>

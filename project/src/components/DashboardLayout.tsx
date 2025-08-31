@@ -114,10 +114,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-800 pt-20">
       <div className="flex">
         {/* Sidebar */}
-        <div className="w-64 bg-white shadow-lg border-r border-gray-200 min-h-screen">
+        <div className="w-64 bg-white dark:bg-dark-900 shadow-lg border-r border-gray-200 dark:border-dark-700 min-h-screen">
           {/* User Profile Section */}
           <div className={`bg-gradient-to-r ${getRoleColor()} p-6 text-white`}>
             <div className="flex items-center space-x-3">
@@ -148,8 +148,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                       to={item.href}
                       className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                         isActive
-                          ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-r-2 border-blue-600 dark:border-blue-400'
+                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-700 hover:text-gray-900 dark:hover:text-gray-100'
                       }`}
                     >
                       <Icon className="w-5 h-5" />
@@ -162,10 +162,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </nav>
 
           {/* Bottom Actions */}
-          <div className="absolute bottom-0 left-0 right-0 w-64 p-4 border-t border-gray-200 bg-white">
+          <div className="absolute bottom-0 left-0 right-0 w-64 p-4 border-t border-gray-200 dark:border-dark-700 bg-white dark:bg-dark-900">
             <button
               onClick={handleSignOut}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
+              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-lg transition-colors"
             >
               <LogOut className="w-5 h-5" />
               <span className="font-medium">Sign Out</span>
@@ -176,13 +176,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         {/* Main Content */}
         <div className="flex-1">
           {/* Top Bar */}
-          <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+          <div className="bg-white dark:bg-dark-900 shadow-sm border-b border-gray-200 dark:border-dark-700 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 capitalize">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 capitalize">
                   {profile?.role || 'rider'} Dashboard
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-400">
                   Welcome back, {profile?.name || user?.email}
                 </p>
               </div>
