@@ -84,19 +84,19 @@ const SupportWorkerRegistrationPage: React.FC = () => {
   // Redirect if not authenticated
   if (!loading && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-50 to-green-50 pt-20">
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 to-green-50 dark:from-dark-900 dark:to-dark-800 pt-20">
         <div className="container mx-auto px-6 py-16">
           <div className="max-w-2xl mx-auto text-center">
-            <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-              <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Users className="w-8 h-8 text-teal-600" />
+            <div className="bg-white dark:bg-dark-800 rounded-3xl shadow-xl p-8 border border-gray-100 dark:border-dark-700">
+              <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Users className="w-8 h-8 text-teal-600 dark:text-teal-400" />
               </div>
               
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50 mb-4">
                 Support Worker Registration
               </h1>
               
-              <p className="text-gray-600 mb-8 leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
                 To become a support worker with AbleGo, you'll need to create an account first. 
                 This helps us ensure the safety and security of our community.
               </p>
@@ -307,17 +307,17 @@ const SupportWorkerRegistrationPage: React.FC = () => {
   const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-green-50 pt-20">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-green-50 dark:from-dark-900 dark:via-dark-800 dark:to-dark-700 pt-20">
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="inline-flex p-4 bg-gradient-to-r from-teal-100 to-green-100 rounded-full mb-6">
-            <Users className="w-8 h-8 text-teal-600" />
+          <div className="inline-flex p-4 bg-gradient-to-r from-teal-100 to-green-100 dark:from-teal-900/30 dark:to-green-900/30 rounded-full mb-6">
+            <Users className="w-8 h-8 text-teal-600 dark:text-teal-400" />
           </div>
-          <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-50 mb-4">
             Support Worker Registration
           </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
             Join our compassionate team and help people with disabilities and health challenges maintain their independence
           </p>
         </div>
@@ -332,7 +332,7 @@ const SupportWorkerRegistrationPage: React.FC = () => {
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
                       currentStep >= step.number
                         ? 'bg-gradient-to-r from-teal-600 to-green-600 text-white shadow-lg'
-                        : 'bg-gray-200 text-gray-600'
+                        : 'bg-gray-200 dark:bg-dark-600 text-gray-600 dark:text-gray-300'
                     }`}>
                       {currentStep > step.number ? (
                         <CheckCircle className="w-6 h-6" />
@@ -342,18 +342,18 @@ const SupportWorkerRegistrationPage: React.FC = () => {
                     </div>
                     <div className="text-center mt-2">
                       <p className={`text-sm font-medium ${
-                        currentStep >= step.number ? 'text-teal-600' : 'text-gray-500'
+                        currentStep >= step.number ? 'text-teal-600 dark:text-teal-400' : 'text-gray-500 dark:text-gray-400'
                       }`}>
                         {step.title}
                       </p>
-                      <p className="text-xs text-gray-400 max-w-24">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 max-w-24">
                         {step.description}
                       </p>
                     </div>
                   </div>
                   {index < steps.length - 1 && (
                     <div className={`w-16 h-0.5 transition-all duration-300 ${
-                      currentStep > step.number ? 'bg-gradient-to-r from-teal-600 to-green-600' : 'bg-gray-300'
+                      currentStep > step.number ? 'bg-gradient-to-r from-teal-600 to-green-600' : 'bg-gray-300 dark:bg-dark-600'
                     }`}></div>
                   )}
                 </React.Fragment>
@@ -363,8 +363,8 @@ const SupportWorkerRegistrationPage: React.FC = () => {
 
           {/* Error Display */}
           {submitError && (
-            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-8">
-              <div className="flex items-center text-red-700">
+            <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-4 mb-8">
+              <div className="flex items-center text-red-700 dark:text-red-400">
                 <AlertCircle className="w-5 h-5 mr-2" />
                 <span>{submitError}</span>
               </div>
@@ -373,8 +373,8 @@ const SupportWorkerRegistrationPage: React.FC = () => {
 
           {/* Success Display */}
           {submitSuccess && (
-            <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 mb-8">
-              <div className="flex items-center text-green-700">
+            <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-4 mb-8">
+              <div className="flex items-center text-green-700 dark:text-green-400">
                 <CheckCircle className="w-5 h-5 mr-2" />
                 <span>Application submitted successfully!</span>
               </div>
@@ -383,14 +383,14 @@ const SupportWorkerRegistrationPage: React.FC = () => {
 
           {/* Step 1: Personal Information */}
           {currentStep === 1 && (
-            <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+            <div className="bg-white dark:bg-dark-800 rounded-3xl shadow-xl p-8 border border-gray-100 dark:border-dark-700">
               <div className="flex items-center mb-8">
-                <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center mr-4">
-                  <User className="w-6 h-6 text-teal-600" />
+                <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/30 rounded-full flex items-center justify-center mr-4">
+                  <User className="w-6 h-6 text-teal-600 dark:text-teal-400" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Personal Information</h2>
-                  <p className="text-gray-600">Tell us about yourself</p>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-50">Personal Information</h2>
+                  <p className="text-gray-600 dark:text-gray-300">Tell us about yourself</p>
                 </div>
               </div>
               

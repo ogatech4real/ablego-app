@@ -857,9 +857,9 @@ const GuestBookingForm: React.FC = () => {
           </div>
 
           {/* Map */}
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100 h-full">
-            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-              <MapPin className="w-5 h-5 mr-2 text-blue-600" />
+          <div className="bg-white dark:bg-dark-800/95 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-100 dark:border-dark-700 h-full">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-6 flex items-center">
+              <MapPin className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
               {stops.length > 0 ? 'Multi-Stop Route Preview' : 'Live Tracking Preview'}
             </h3>
             
@@ -878,10 +878,10 @@ const GuestBookingForm: React.FC = () => {
               className="h-96"
             />
 
-            <div className="mt-6 p-4 bg-green-50 rounded-xl border-2 border-green-200">
+            <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border-2 border-green-200 dark:border-green-800">
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-3"></div>
-                <span className="text-green-800 font-medium">
+                <span className="text-green-800 dark:text-green-300 font-medium">
                   {pickupDetails && dropoffDetails && areAllStopsValid()
                     ? `Route calculated: ${travelInfo?.distance.text || 'calculating...'} • Admin will assign driver after booking`
                     : 'Enter valid UK addresses to see route preview'
@@ -895,18 +895,18 @@ const GuestBookingForm: React.FC = () => {
 
       {currentStep === 'guest-info' && !showPayment && (
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+          <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-dark-700">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <User className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <User className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Your Information</h3>
-              <p className="text-gray-600">We need a few details to complete your booking</p>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-2">Your Information</h3>
+              <p className="text-gray-600 dark:text-gray-300">We need a few details to complete your booking</p>
             </div>
 
             {submitError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center text-red-700">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+                <div className="flex items-center text-red-700 dark:text-red-400">
                   <AlertTriangle className="w-5 h-5 mr-2" />
                   <span>{submitError}</span>
                 </div>
@@ -915,7 +915,7 @@ const GuestBookingForm: React.FC = () => {
 
             <form onSubmit={(e) => { e.preventDefault(); handleSubmitGuestInfo(); }} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Full Name *
                 </label>
                 <div className="relative">
@@ -926,14 +926,14 @@ const GuestBookingForm: React.FC = () => {
                     value={guestInfo.name}
                     onChange={handleGuestInfoChange}
                     required
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-dark-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                     placeholder="Enter your full name"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Email Address *
                 </label>
                 <div className="relative">
@@ -944,15 +944,15 @@ const GuestBookingForm: React.FC = () => {
                     value={guestInfo.email}
                     onChange={handleGuestInfoChange}
                     required
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-dark-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                     placeholder="Enter your email address"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">We'll send your booking confirmation here</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">We'll send your booking confirmation here</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Phone Number *
                 </label>
                 <div className="relative">
@@ -963,15 +963,15 @@ const GuestBookingForm: React.FC = () => {
                     value={guestInfo.phone}
                     onChange={handleGuestInfoChange}
                     required
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-dark-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                     placeholder="Enter your phone number (required)"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Required for driver contact and emergency updates</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Required for driver contact and emergency updates</p>
               </div>
 
               {/* Optional Account Creation */}
-              <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
                 <div className="flex items-start space-x-3">
                   <input
                     type="checkbox"

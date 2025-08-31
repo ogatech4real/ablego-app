@@ -78,26 +78,26 @@ const DriverRegistrationPage: React.FC = () => {
   // Redirect if not authenticated
   if (!loading && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-50 pt-20">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-50 dark:from-dark-900 dark:to-dark-800 pt-20">
         <div className="container mx-auto px-6 py-16">
           <div className="max-w-2xl mx-auto text-center">
-            <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Car className="w-8 h-8 text-blue-600" />
+            <div className="bg-white dark:bg-dark-800 rounded-3xl shadow-xl p-8 border border-gray-100 dark:border-dark-700">
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Car className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               </div>
               
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50 mb-4">
                 Driver Registration
               </h1>
               
-              <p className="text-gray-600 mb-8 leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
                 To register as a driver with AbleGo, you'll need to create an account first. 
                 This helps us verify your identity and keep our platform secure.
               </p>
 
-              <div className="bg-blue-50 rounded-2xl p-6 mb-8">
-                <h3 className="font-semibold text-blue-900 mb-3">What you'll need:</h3>
-                <ul className="text-sm text-blue-800 space-y-2 text-left">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-6 mb-8">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-3">What you'll need:</h3>
+                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-2 text-left">
                   <li className="flex items-center">
                     <CheckCircle className="w-4 h-4 mr-2 text-blue-600" />
                     Valid UK driving license (3+ years)
@@ -242,17 +242,17 @@ const DriverRegistrationPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 pt-20">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 dark:from-dark-900 dark:via-dark-800 dark:to-dark-700 pt-20">
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="inline-flex p-4 bg-gradient-to-r from-blue-100 to-teal-100 rounded-full mb-6">
-            <Car className="w-8 h-8 text-blue-600" />
+          <div className="inline-flex p-4 bg-gradient-to-r from-blue-100 to-teal-100 dark:from-blue-900/30 dark:to-teal-900/30 rounded-full mb-6">
+            <Car className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
-          <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-50 mb-4">
             Driver Registration
           </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
             Join our network of professional drivers and start earning while making a difference in people's lives
           </p>
         </div>
@@ -267,7 +267,7 @@ const DriverRegistrationPage: React.FC = () => {
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
                       currentStep >= step.number
                         ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white shadow-lg'
-                        : 'bg-gray-200 text-gray-600'
+                        : 'bg-gray-200 dark:bg-dark-600 text-gray-600 dark:text-gray-300'
                     }`}>
                       {currentStep > step.number ? (
                         <CheckCircle className="w-6 h-6" />
@@ -277,18 +277,18 @@ const DriverRegistrationPage: React.FC = () => {
                     </div>
                     <div className="text-center mt-2">
                       <p className={`text-sm font-medium ${
-                        currentStep >= step.number ? 'text-blue-600' : 'text-gray-500'
+                        currentStep >= step.number ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
                       }`}>
                         {step.title}
                       </p>
-                      <p className="text-xs text-gray-400 max-w-24">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 max-w-24">
                         {step.description}
                       </p>
                     </div>
                   </div>
                   {index < steps.length - 1 && (
                     <div className={`w-16 h-0.5 transition-all duration-300 ${
-                      currentStep > step.number ? 'bg-gradient-to-r from-blue-600 to-teal-600' : 'bg-gray-300'
+                      currentStep > step.number ? 'bg-gradient-to-r from-blue-600 to-teal-600' : 'bg-gray-300 dark:bg-dark-600'
                     }`}></div>
                   )}
                 </React.Fragment>
