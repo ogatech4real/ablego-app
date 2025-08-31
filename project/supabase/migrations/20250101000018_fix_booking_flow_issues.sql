@@ -205,7 +205,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- FIX EMAIL TRIGGER
 -- ============================================================================
 
--- Drop the problematic email trigger function
+-- Drop the trigger first, then the function
+DROP TRIGGER IF EXISTS trigger_email_queue_processing ON admin_email_notifications;
 DROP FUNCTION IF EXISTS trigger_email_queue_processing();
 
 -- Create a new email trigger function without net schema dependency
@@ -233,7 +234,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Recreate the email trigger
-DROP TRIGGER IF EXISTS trigger_email_queue_processing ON admin_email_notifications;
 CREATE TRIGGER trigger_email_queue_processing
   AFTER INSERT ON admin_email_notifications
   FOR EACH ROW
