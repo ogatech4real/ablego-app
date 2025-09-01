@@ -25,6 +25,7 @@ import { db } from '../lib/supabase';
 import DocumentManager from '../components/DocumentManager';
 import AuthModal from '../components/AuthModal';
 import StripeConnectOnboarding from '../components/StripeConnectOnboarding';
+import { supportWorkerApplicationService } from '../services/supportWorkerApplicationService';
 import { scrollToTop } from '../utils/scrollUtils';
 import { scrollToActionZone } from '../utils/scrollUtils';
 
@@ -247,16 +248,36 @@ const SupportWorkerRegistrationPage: React.FC = () => {
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // Simulate profile update for demo
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Validate required fields
+      const requiredFields = ['fullName', 'phone', 'address', 'dateOfBirth'];
+      const missingFields = requiredFields.filter(field => !personalData[field as keyof typeof personalData]);
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      }
 
-      // Mock successful update
-      console.log('Profile updated:', personalData);
+      // Validate phone number format (basic UK format)
+      const phoneRegex = /^(\+44|0)[1-9]\d{8,9}$/;
+      if (!phoneRegex.test(personalData.phone.replace(/\s/g, ''))) {
+        throw new Error('Please enter a valid UK phone number');
+      }
 
+      // Validate date of birth (must be 18 or older)
+      const birthDate = new Date(personalData.dateOfBirth);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (age < 18 || (age === 18 && monthDiff < 0) || (age === 18 && monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        throw new Error('You must be at least 18 years old to register as a support worker');
+      }
+
+      console.log('Personal information validated:', personalData);
       setCurrentStep(2);
       scrollToActionZone('.form-step.active, .registration-form');
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error validating personal information:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Unknown error occurred');
       scrollToActionZone('.error-message');
     } finally {
       setIsSubmitting(false);
@@ -270,16 +291,68 @@ const SupportWorkerRegistrationPage: React.FC = () => {
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // Simulate support worker creation for demo
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!user) {
+        throw new Error('User must be authenticated to submit support worker application');
+      }
 
-      // Mock successful creation
-      console.log('Support worker created:', professionalData);
+      // Validate required fields
+      if (!professionalData.bio || professionalData.bio.length < 100) {
+        throw new Error('Bio must be at least 100 characters long');
+      }
 
-      setCurrentStep(3);
-      scrollToActionZone('.form-step.active, .registration-form');
+      if (professionalData.specializations.length === 0) {
+        throw new Error('Please select at least one area of specialization');
+      }
+
+      if (professionalData.languages.length === 0 || professionalData.languages.some(lang => !lang.trim())) {
+        throw new Error('Please provide at least one language spoken');
+      }
+
+      // Prepare application data in the correct format for the service
+      const applicationData = {
+        user_id: user.id,
+        personal_data: {
+          firstName: personalData.fullName.split(' ')[0] || personalData.fullName,
+          lastName: personalData.fullName.split(' ').slice(1).join(' ') || '',
+          dateOfBirth: personalData.dateOfBirth,
+          phone: personalData.phone,
+          address: personalData.address,
+          emergencyContactName: personalData.emergencyContactName,
+          emergencyContactPhone: personalData.emergencyContactPhone,
+          medicalNotes: '', // You may want to add this to the form
+          accessibilityRequirements: [] // You may want to add this to the form
+        },
+        qualifications: {
+          certifications: professionalData.certifications,
+          experience: professionalData.bio, // Using bio as experience description
+          specializations: professionalData.specializations,
+          availability: Object.keys(professionalData.availability).filter(day => 
+            professionalData.availability[day as keyof typeof professionalData.availability].available
+          ),
+          preferredHours: `${professionalData.availability.monday.start}-${professionalData.availability.monday.end}` // Simplified
+        },
+        documents: {
+          // Document URLs would be populated from DocumentManager component
+          dbsCertificateUrl: '',
+          firstAidCertificateUrl: '',
+          trainingCertificatesUrl: [],
+          referencesUrl: []
+        }
+      };
+
+      // Submit support worker application using the service
+      const result = await supportWorkerApplicationService.submitApplication(applicationData);
+
+      if (result.success) {
+        console.log('Support worker application submitted successfully:', result.data);
+        setCurrentStep(3);
+        scrollToActionZone('.form-step.active, .registration-form');
+      } else {
+        throw new Error(result.error || 'Failed to submit support worker application');
+      }
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error submitting support worker application:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Unknown error occurred');
       scrollToActionZone('.error-message');
     } finally {
       setIsSubmitting(false);

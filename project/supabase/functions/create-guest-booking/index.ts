@@ -126,18 +126,38 @@ serve(async (req) => {
           
           console.log('✅ Linked to existing user account:', existingUser.id)
         } else {
-          // For now, just mark as pending - we'll handle account creation separately
-          userAccountStatus = 'pending';
-          userAccountResult = {
-            success: true,
-            account_status: 'pending',
-            message: 'Account creation pending - will be processed separately',
-            action: 'pending_creation'
-          };
-          console.log('⏳ User account creation marked as pending')
+          // Create new user account
+          const { data: accountResult, error: accountError } = await supabaseClient.functions.invoke('create-user-account', {
+            body: {
+              email: request.guest_email,
+              password: request.password,
+              name: request.guest_name,
+              phone: request.guest_phone,
+              role: 'rider'
+            }
+          })
+
+          if (accountError || !accountResult?.success) {
+            console.error('❌ User account creation error:', accountError || accountResult?.error)
+            userAccountStatus = 'failed';
+            userAccountResult = {
+              success: false,
+              error: accountError?.message || accountResult?.error || 'Account creation failed'
+            };
+          } else {
+            userAccountStatus = 'created';
+            userAccountResult = {
+              success: true,
+              user_id: accountResult.user_id,
+              account_status: 'created',
+              message: 'New user account created successfully',
+              action: 'created_new'
+            };
+            console.log('✅ New user account created:', accountResult.user_id)
+          }
         }
       } catch (accountError) {
-        console.error('❌ User account check error:', accountError)
+        console.error('❌ User account check/creation error:', accountError)
         userAccountStatus = 'failed';
         userAccountResult = {
           success: false,
@@ -154,6 +174,7 @@ serve(async (req) => {
         email: request.guest_email,
         phone: request.guest_phone,
         linked_user_id: userAccountResult?.user_id || null,
+        account_created_at: userAccountResult?.success ? new Date().toISOString() : null,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'email'
@@ -206,6 +227,7 @@ serve(async (req) => {
         special_requirements: request.booking_data.special_requirements,
         notes: request.booking_data.notes,
         payment_method: request.booking_data.payment_method,
+        account_linked_at: userAccountResult?.success ? new Date().toISOString() : null,
         status: 'pending'
       })
       .select()

@@ -21,6 +21,7 @@ import { db } from '../lib/supabase';
 import DocumentManager from '../components/DocumentManager';
 import AuthModal from '../components/AuthModal';
 import StripeConnectOnboarding from '../components/StripeConnectOnboarding';
+import { driverApplicationService } from '../services/driverApplicationService';
 import { scrollToTop } from '../utils/scrollUtils';
 import { scrollToActionZone } from '../utils/scrollUtils';
 
@@ -186,16 +187,42 @@ const DriverRegistrationPage: React.FC = () => {
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // Simulate profile update for demo
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Validate required fields
+      const requiredFields = ['fullName', 'phone', 'address', 'dateOfBirth', 'drivingLicenseNumber'];
+      const missingFields = requiredFields.filter(field => !personalData[field as keyof typeof personalData]);
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      }
 
-      // Mock successful update
-      console.log('Profile updated:', personalData);
+      // Validate phone number format (basic UK format)
+      const phoneRegex = /^(\+44|0)[1-9]\d{8,9}$/;
+      if (!phoneRegex.test(personalData.phone.replace(/\s/g, ''))) {
+        throw new Error('Please enter a valid UK phone number');
+      }
 
+      // Validate date of birth (must be 18 or older)
+      const birthDate = new Date(personalData.dateOfBirth);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (age < 18 || (age === 18 && monthDiff < 0) || (age === 18 && monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        throw new Error('You must be at least 18 years old to register as a driver');
+      }
+
+      // Validate driving license number (basic UK format)
+      const licenseRegex = /^[A-Z]{5}\d{6}[A-Z]{2}\d{2}$/;
+      if (!licenseRegex.test(personalData.drivingLicenseNumber.replace(/\s/g, ''))) {
+        throw new Error('Please enter a valid UK driving license number');
+      }
+
+      console.log('Personal information validated:', personalData);
       setCurrentStep(2);
       scrollToActionZone('.form-step.active, .registration-form');
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error validating personal information:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Unknown error occurred');
       scrollToActionZone('.error-message');
     } finally {
       setIsSubmitting(false);
@@ -209,16 +236,58 @@ const DriverRegistrationPage: React.FC = () => {
       setIsSubmitting(true);
       setSubmitError(null);
 
-      // Simulate vehicle creation for demo
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!user) {
+        throw new Error('User must be authenticated to submit driver application');
+      }
 
-      // Mock successful creation
-      console.log('Vehicle created:', vehicleData);
+      // Prepare application data in the correct format for the service
+      const applicationData = {
+        user_id: user.id,
+        personal_data: {
+          firstName: personalData.fullName.split(' ')[0] || personalData.fullName,
+          lastName: personalData.fullName.split(' ').slice(1).join(' ') || '',
+          dateOfBirth: personalData.dateOfBirth,
+          drivingLicenseNumber: personalData.drivingLicenseNumber,
+          emergencyContactName: personalData.emergencyContactName,
+          emergencyContactPhone: personalData.emergencyContactPhone
+        },
+        vehicle_data: {
+          make: vehicleData.make,
+          model: vehicleData.model,
+          year: vehicleData.year.toString(),
+          registrationNumber: vehicleData.licensePlate,
+          color: vehicleData.color,
+          fuelType: 'petrol', // Default value - you may want to add this to the form
+          transmission: 'manual', // Default value - you may want to add this to the form
+          seats: vehicleData.passengerCapacity,
+          wheelchairAccessible: vehicleData.wheelchairCapacity > 0,
+          insuranceProvider: vehicleData.insuranceProvider,
+          insurancePolicyNumber: '', // You may want to add this to the form
+          insuranceExpiryDate: vehicleData.insuranceExpiryDate,
+          motExpiryDate: vehicleData.motExpiryDate
+        },
+        documents: {
+          // Document URLs would be populated from DocumentManager component
+          drivingLicenseUrl: '',
+          insuranceCertificateUrl: '',
+          motCertificateUrl: '',
+          vehicleRegistrationUrl: ''
+        }
+      };
 
-      setCurrentStep(3);
-      scrollToActionZone('.form-step.active, .registration-form');
+      // Submit driver application using the service
+      const result = await driverApplicationService.submitApplication(applicationData);
+
+      if (result.success) {
+        console.log('Driver application submitted successfully:', result.data);
+        setCurrentStep(3);
+        scrollToActionZone('.form-step.active, .registration-form');
+      } else {
+        throw new Error(result.error || 'Failed to submit driver application');
+      }
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error submitting driver application:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Unknown error occurred');
       scrollToActionZone('.error-message');
     } finally {
       setIsSubmitting(false);

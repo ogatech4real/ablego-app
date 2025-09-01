@@ -348,24 +348,62 @@ class AdminDashboardService {
   }
 
   /**
-   * Get all admin notifications
+   * Get all admin notifications using new RPC function
    */
   async getAllNotifications(limit: number = 100): Promise<{ data: AdminNotification[] | null; error: any }> {
     try {
       const { data, error } = await supabase
-        .from('admin_notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit);
+        .rpc('get_admin_notifications', { 
+          limit_count: limit, 
+          offset_count: 0 
+        });
 
       if (error) {
         console.error('❌ Failed to get all notifications:', error);
         return { data: null, error };
       }
 
-      return { data: data as AdminNotification[], error: null };
+      // Transform the data to match AdminNotification interface
+      const notifications: AdminNotification[] = (data || []).map((notification: any) => ({
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        data: {
+          related_entity_type: notification.related_entity_type,
+          related_entity_id: notification.related_entity_id
+        },
+        is_read: notification.read,
+        priority: 'normal', // Default priority
+        created_at: notification.created_at,
+        read_at: notification.read ? notification.updated_at : undefined
+      }));
+
+      return { data: notifications, error: null };
     } catch (error) {
       console.error('❌ Get all notifications error:', error);
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Mark multiple notifications as read using new RPC function
+   */
+  async markNotificationsAsRead(notificationIds: string[]): Promise<{ data: boolean | null; error: any }> {
+    try {
+      const { data, error } = await supabase
+        .rpc('mark_notifications_as_read', { 
+          notification_ids: notificationIds 
+        });
+
+      if (error) {
+        console.error('❌ Failed to mark notifications as read:', error);
+        return { data: null, error };
+      }
+
+      return { data: data as boolean, error: null };
+    } catch (error) {
+      console.error('❌ Mark notifications as read error:', error);
       return { data: null, error };
     }
   }
