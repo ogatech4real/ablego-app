@@ -102,7 +102,7 @@ serve(async (req) => {
 
         console.log(`📧 Sending ${email.email_type} email to ${email.recipient_email}`)
 
-        const emailResult = await sendEmailWithFallback(email, smtpConfig, supabaseClient)
+        const emailResult = await sendEmailWithFallback(email, smtpConfig)
 
         if (emailResult.success) {
           await supabaseClient
@@ -255,7 +255,7 @@ async function getSMTPConfiguration(supabaseClient: any): Promise<SMTPConfig | n
   }
 }
 
-async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPConfig | null, supabaseClient: any): Promise<{
+async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPConfig | null): Promise<{
   success: boolean;
   method?: string;
   details?: any;
@@ -266,16 +266,39 @@ async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPC
     try {
       console.log('📧 Attempting database SMTP delivery...')
 
-      const client = new SMTPClient({
-        connection: {
-          hostname: smtpConfig.host,
-          port: smtpConfig.port,
-          tls: smtpConfig.secure,
-          auth: {
-            username: smtpConfig.username,
-            password: smtpConfig.password,
-          },
+      // Configure SMTP client based on port and security settings
+      const connectionConfig: any = {
+        hostname: smtpConfig.host,
+        port: smtpConfig.port,
+        auth: {
+          username: smtpConfig.username,
+          password: smtpConfig.password,
         },
+      }
+
+      // Handle different port configurations
+      if (smtpConfig.port === 465) {
+        // Port 465: Use implicit TLS
+        connectionConfig.tls = true
+      } else if (smtpConfig.port === 587) {
+        // Port 587: Use STARTTLS
+        connectionConfig.tls = false
+        connectionConfig.starttls = true
+      } else {
+        // Other ports: Use secure setting from config
+        connectionConfig.tls = smtpConfig.secure
+      }
+
+      console.log('📧 SMTP connection config:', {
+        host: connectionConfig.hostname,
+        port: connectionConfig.port,
+        tls: connectionConfig.tls,
+        starttls: connectionConfig.starttls,
+        username: connectionConfig.auth.username
+      })
+
+      const client = new SMTPClient({
+        connection: connectionConfig,
       })
 
       await client.send({
@@ -294,40 +317,23 @@ async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPC
         details: {
           host: smtpConfig.host,
           port: smtpConfig.port,
-          from: smtpConfig.from_email
+          from: smtpConfig.from_email,
+          tls: connectionConfig.tls,
+          starttls: connectionConfig.starttls
         }
       }
     } catch (error) {
       console.log('❌ Database SMTP failed:', error.message)
+      console.log('❌ SMTP error details:', {
+        message: error.message,
+        stack: error.stack,
+        host: smtpConfig.host,
+        port: smtpConfig.port
+      })
     }
   }
 
-  // Method 2: Try the dedicated send-email function
-  try {
-    console.log('📧 Attempting send-email function...')
-
-    const { data, error } = await supabaseClient.functions.invoke('send-email', {
-      body: {
-        to: email.recipient_email,
-        subject: email.subject,
-        html: email.html_content
-      }
-    })
-
-    if (!error && data?.success) {
-      return {
-        success: true,
-        method: 'send-email_function',
-        details: data
-      }
-    } else {
-      throw new Error(error?.message || 'Send-email function failed')
-    }
-  } catch (error) {
-    console.log('❌ Send-email function failed:', error.message)
-  }
-
-  // Method 3: Try Resend API
+  // Method 2: Try Resend API
   const resendApiKey = Deno.env.get('RESEND_API_KEY')
   if (resendApiKey) {
     try {
@@ -363,7 +369,7 @@ async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPC
     }
   }
 
-  // Method 4: Try SendGrid API
+  // Method 3: Try SendGrid API
   const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY')
   if (sendgridApiKey) {
     try {
@@ -403,7 +409,7 @@ async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPC
     }
   }
 
-  // Method 5: Try Supabase Auth email as last resort
+  // Method 4: Try Supabase Auth email as last resort
   try {
     console.log('📧 Attempting Supabase Auth email...')
 
@@ -440,7 +446,7 @@ async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPC
     success: false,
     error: {
       message: 'All email sending methods failed',
-      attempted_methods: ['database_smtp', 'send-email_function', 'resend', 'sendgrid', 'supabase_auth'],
+      attempted_methods: ['database_smtp', 'resend', 'sendgrid', 'supabase_auth'],
       email_type: email.email_type,
       retry_count: email.retry_count,
       recipient: email.recipient_email
