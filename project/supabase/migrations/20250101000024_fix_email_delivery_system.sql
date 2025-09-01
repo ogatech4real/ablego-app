@@ -164,15 +164,42 @@ BEGIN
 END $$;
 
 -- 6. Set proper priorities for different email types
-UPDATE admin_email_notifications 
-SET priority = CASE 
-    WHEN email_type = 'booking_confirmation' THEN 1
-    WHEN email_type = 'payment_receipt' THEN 1
-    WHEN email_type = 'driver_assignment' THEN 2
-    WHEN email_type = 'admin_notification' THEN 3
-    ELSE 3
-END
-WHERE priority IS NULL OR priority = 1;
+-- Handle priority update based on current column type
+DO $$
+DECLARE
+    col_type text;
+BEGIN
+    -- Get the current data type of email_type column
+    SELECT data_type INTO col_type
+    FROM information_schema.columns 
+    WHERE table_name = 'admin_email_notifications' 
+    AND column_name = 'email_type';
+    
+    -- Update priorities based on column type
+    IF col_type = 'text' THEN
+        -- Column is still TEXT type
+        UPDATE admin_email_notifications 
+        SET priority = CASE 
+            WHEN email_type = 'booking_confirmation' THEN 1
+            WHEN email_type = 'payment_receipt' THEN 1
+            WHEN email_type = 'driver_assignment' THEN 2
+            WHEN email_type = 'admin_notification' THEN 3
+            ELSE 3
+        END
+        WHERE priority IS NULL OR priority = 1;
+    ELSE
+        -- Column is enum type
+        UPDATE admin_email_notifications 
+        SET priority = CASE 
+            WHEN email_type = 'booking_confirmation'::email_type THEN 1
+            WHEN email_type = 'payment_receipt'::email_type THEN 1
+            WHEN email_type = 'driver_assignment'::email_type THEN 2
+            WHEN email_type = 'admin_notification'::email_type THEN 3
+            ELSE 3
+        END
+        WHERE priority IS NULL OR priority = 1;
+    END IF;
+END $$;
 
 -- 7. Now convert the columns to use enum types (after data is properly set)
 -- Convert email_type column to use the enum type only if it's still TEXT
