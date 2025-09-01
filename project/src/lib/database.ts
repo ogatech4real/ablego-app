@@ -19,19 +19,34 @@ class DatabaseHelper {
       const totalDrivers = users?.filter(u => u.role === 'driver').length || 0;
       const totalSupportWorkers = users?.filter(u => u.role === 'support_worker').length || 0;
 
-      // Get total bookings
+      // Get total bookings (regular + guest)
       const { count: totalBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select('*', { count: 'exact', head: true });
 
       if (bookingsError) throw bookingsError;
 
-      // Get guest bookings
       const { count: totalGuestBookings, error: guestBookingsError } = await supabase
         .from('guest_bookings')
         .select('*', { count: 'exact', head: true });
 
       if (guestBookingsError) throw guestBookingsError;
+
+      // Get new bookings (last 24 hours)
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const { count: newBookings, error: newBookingsError } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', yesterday.toISOString());
+
+      if (newBookingsError) throw newBookingsError;
+
+      const { count: newGuestBookings, error: newGuestBookingsError } = await supabase
+        .from('guest_bookings')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', yesterday.toISOString());
+
+      if (newGuestBookingsError) throw newGuestBookingsError;
 
       // Get monthly revenue (sum of fare_estimate for completed bookings this month)
       const startOfMonth = new Date();
@@ -56,15 +71,32 @@ class DatabaseHelper {
 
       if (activeError) throw activeError;
 
+      // Get pending applications
+      const { count: pendingDriverApps, error: driverAppsError } = await supabase
+        .from('driver_applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      if (driverAppsError) throw driverAppsError;
+
+      const { count: pendingSupportWorkerApps, error: supportWorkerAppsError } = await supabase
+        .from('support_worker_applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      if (supportWorkerAppsError) throw supportWorkerAppsError;
+
       return {
         data: {
           total_riders: totalRiders,
           total_drivers: totalDrivers,
           total_support_workers: totalSupportWorkers,
           total_bookings: (totalBookings || 0) + (totalGuestBookings || 0),
+          new_bookings: (newBookings || 0) + (newGuestBookings || 0),
           month_bookings: monthlyBookings?.length || 0,
           month_revenue: monthRevenue,
-          active_trips: activeTrips || 0
+          active_trips: activeTrips || 0,
+          pending_applications: (pendingDriverApps || 0) + (pendingSupportWorkerApps || 0)
         },
         error: null
       };

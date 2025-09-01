@@ -9,11 +9,12 @@ import ErrorBoundary from './components/ErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
 
 // Lazy load admin pages for better performance
-const AdminBookingsPage = lazy(() => import('./pages/admin/AdminBookingsPage'));
-const AdminSupportWorkersPage = lazy(() => import('./pages/admin/AdminSupportWorkersPage'));
-const AdminVehiclesPage = lazy(() => import('./pages/admin/AdminVehiclesPage'));
-const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
-const AdminApplicationsPage = lazy(() => import('./pages/admin/AdminApplicationsPage'));
+            const AdminBookingsPage = lazy(() => import('./pages/admin/AdminBookingsPage'));
+            const AdminSupportWorkersPage = lazy(() => import('./pages/admin/AdminSupportWorkersPage'));
+            const AdminVehiclesPage = lazy(() => import('./pages/admin/AdminVehiclesPage'));
+            const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
+            const AdminApplicationsPage = lazy(() => import('./pages/admin/AdminApplicationsPage'));
+            const AdminNotificationsPage = lazy(() => import('./pages/admin/AdminNotificationsPage'));
 
 // Loading component for lazy-loaded routes
 const AdminPageLoader = () => (
@@ -95,13 +96,20 @@ function App() {
                 </Suspense>
               </AdminRoute>
             } />
-            <Route path="/admin/applications" element={
-              <AdminRoute>
-                <Suspense fallback={<AdminPageLoader />}>
-                  <AdminApplicationsPage />
-                </Suspense>
-              </AdminRoute>
-            } />
+                                    <Route path="/admin/applications" element={
+                          <AdminRoute>
+                            <Suspense fallback={<AdminPageLoader />}>
+                              <AdminApplicationsPage />
+                            </Suspense>
+                          </AdminRoute>
+                        } />
+                        <Route path="/admin/notifications" element={
+                          <AdminRoute>
+                            <Suspense fallback={<AdminPageLoader />}>
+                              <AdminNotificationsPage />
+                            </Suspense>
+                          </AdminRoute>
+                        } />
             
             {/* Dashboard routes */}
             <Route path="/dashboard" element={<DashboardPage />} />

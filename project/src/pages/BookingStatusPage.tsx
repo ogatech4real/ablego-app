@@ -14,7 +14,7 @@ const BookingStatusPage: React.FC = () => {
   useEffect(() => {
     if (token) {
       fetchBookingDetails();
-    } else {
+    } else {0
       setError('No booking token provided');
       setLoading(false);
     }
