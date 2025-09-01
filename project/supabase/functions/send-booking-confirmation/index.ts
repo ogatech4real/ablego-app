@@ -11,7 +11,7 @@ interface BookingConfirmationRequest {
   guest_email: string;
   guest_name: string;
   guest_phone: string;
-  payment_method: string;
+  payment_method: 'cash_bank' | 'stripe';
   access_token: string;
   tracking_url: string;
   user_account_created?: boolean;
@@ -21,8 +21,11 @@ interface BookingConfirmationRequest {
     dropoff_address: string;
     pickup_time: string;
     fare_estimate: number;
-    vehicle_type?: string;
-    special_requirements?: string;
+    support_workers_count: number;
+    vehicle_features: string[];
+    special_requirements?: string | null;
+    booking_type: string;
+    lead_time_hours: number;
   };
 }
 
@@ -39,6 +42,13 @@ serve(async (req) => {
 
     const confirmationData: BookingConfirmationRequest = await req.json()
 
+    console.log('📧 Processing booking confirmation:', {
+      booking_id: confirmationData.booking_id,
+      guest_email: confirmationData.guest_email,
+      user_account_created: confirmationData.user_account_created,
+      timestamp: new Date().toISOString()
+    })
+
     // Create email content
     const pickupDate = new Date(confirmationData.booking_details.pickup_time)
     const bookingRef = confirmationData.booking_id.slice(0, 8).toUpperCase()
@@ -51,39 +61,91 @@ serve(async (req) => {
       minute: '2-digit'
     })
     
-    // Store customer booking confirmation email
-    await supabaseClient
+    // Generate customer booking confirmation email
+    const customerEmailContent = generateCustomerBookingEmail(confirmationData, bookingRef, formattedPickupTime)
+    
+    // Generate admin notification email
+    const adminEmailContent = generateAdminNotificationEmail(confirmationData, bookingRef, formattedPickupTime)
+    
+    // Store customer booking confirmation email with proper status
+    const { data: customerEmail, error: customerEmailError } = await supabaseClient
       .from('admin_email_notifications')
       .insert({
         recipient_email: confirmationData.guest_email,
         subject: `🎉 Booking Confirmed - AbleGo Ride on ${pickupDate.toLocaleDateString()}`,
-        html_content: generateCustomerBookingEmail(confirmationData, bookingRef, formattedPickupTime),
+        html_content: customerEmailContent,
         booking_id: confirmationData.booking_id,
         notification_type: 'booking_confirmation',
+        email_type: 'booking_confirmation',
+        email_status: 'queued',
+        priority: 1, // High priority for customer emails
+        retry_count: 0,
+        max_retries: 3,
         sent: false
       })
+      .select()
+      .single()
 
-    // Store admin notification email
-    await supabaseClient
+    if (customerEmailError) {
+      console.error('❌ Failed to queue customer email:', customerEmailError)
+    } else {
+      console.log('✅ Customer email queued:', customerEmail.id)
+    }
+
+    // Store admin notification email with proper status
+    const { data: adminEmail, error: adminEmailError } = await supabaseClient
       .from('admin_email_notifications')
       .insert({
         recipient_email: 'admin@ablego.co.uk',
         subject: `🚗 New Booking - ${confirmationData.guest_name} - £${confirmationData.booking_details.fare_estimate.toFixed(2)}`,
-        html_content: generateAdminNotificationEmail(confirmationData, bookingRef, formattedPickupTime),
+        html_content: adminEmailContent,
         booking_id: confirmationData.booking_id,
         notification_type: 'admin_booking_notification',
+        email_type: 'admin_notification',
+        email_status: 'queued',
+        priority: 2, // Medium priority for admin notifications
+        retry_count: 0,
+        max_retries: 3,
         sent: false
       })
+      .select()
+      .single()
 
-    console.log('✅ Booking confirmation emails queued for:', confirmationData.guest_email)
+    if (adminEmailError) {
+      console.error('❌ Failed to queue admin email:', adminEmailError)
+    } else {
+      console.log('✅ Admin email queued:', adminEmail.id)
+    }
+
+    // Immediately trigger email delivery
+    try {
+      console.log('📧 Triggering immediate email delivery...')
+      
+      const { data: deliveryResult, error: deliveryError } = await supabaseClient.functions.invoke('email-delivery-system', {
+        body: {}
+      })
+
+      if (deliveryError) {
+        console.error('❌ Email delivery trigger failed:', deliveryError)
+      } else {
+        console.log('✅ Email delivery triggered successfully:', deliveryResult)
+      }
+    } catch (deliveryError) {
+      console.error('❌ Email delivery trigger error:', deliveryError)
+    }
+
+    console.log('✅ Booking confirmation emails processed for:', confirmationData.guest_email)
 
     return new Response(
       JSON.stringify({ 
-        message: 'Booking confirmation emails queued successfully',
+        message: 'Booking confirmation emails processed successfully',
         booking_reference: bookingRef,
         tracking_url: confirmationData.tracking_url,
-        customer_email: confirmationData.guest_email,
-        admin_email: 'admin@ablego.co.uk'
+        emails_queued: {
+          customer: !!customerEmail,
+          admin: !!adminEmail
+        },
+        user_account_status: confirmationData.user_account_status
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -94,7 +156,7 @@ serve(async (req) => {
     console.error('❌ Booking confirmation error:', error)
     return new Response(
       JSON.stringify({ 
-        error: 'Failed to queue booking confirmation emails',
+        error: 'Failed to process booking confirmation emails',
         details: error.message 
       }),
       {
@@ -107,7 +169,9 @@ serve(async (req) => {
 
 function generateCustomerBookingEmail(data: BookingConfirmationRequest, bookingRef: string, formattedPickupTime: string): string {
   const fareAmount = data.booking_details.fare_estimate.toFixed(2)
-  const vehicleType = data.booking_details.vehicle_type || 'Standard Vehicle'
+  const vehicleType = data.booking_details.vehicle_features?.length > 0 
+    ? data.booking_details.vehicle_features.join(', ') 
+    : 'Standard Vehicle'
   
   return `
 <!DOCTYPE html>
@@ -204,6 +268,13 @@ function generateCustomerBookingEmail(data: BookingConfirmationRequest, bookingR
             margin: 20px 0;
             border-left: 4px solid #ffc107;
         }
+        .account-info {
+            background: #d1ecf1;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #17a2b8;
+        }
         @media (max-width: 600px) {
             .detail-row { flex-direction: column; }
             .detail-row span:first-child { font-weight: bold; margin-bottom: 5px; }
@@ -217,8 +288,9 @@ function generateCustomerBookingEmail(data: BookingConfirmationRequest, bookingR
             <div class="status-badge">✅ Booking Confirmed</div>
         </div>
 
-        <h2>Hello ${data.guest_name}!</h2>
-        <p>Your AbleGo ride has been successfully booked and confirmed. Here are your booking details:</p>
+        <h2>Hello ${data.guest_name},</h2>
+        
+        <p>Your booking has been confirmed! Here are your journey details:</p>
 
         <div class="booking-details">
             <div class="detail-row">
@@ -230,7 +302,7 @@ function generateCustomerBookingEmail(data: BookingConfirmationRequest, bookingR
                 <span>${data.booking_details.pickup_address}</span>
             </div>
             <div class="detail-row">
-                <span>Destination:</span>
+                <span>Drop-off Address:</span>
                 <span>${data.booking_details.dropoff_address}</span>
             </div>
             <div class="detail-row">
@@ -242,18 +314,30 @@ function generateCustomerBookingEmail(data: BookingConfirmationRequest, bookingR
                 <span>${vehicleType}</span>
             </div>
             <div class="detail-row">
-                <span>Payment Method:</span>
-                <span>${data.payment_method}</span>
+                <span>Support Workers:</span>
+                <span>${data.booking_details.support_workers_count}</span>
             </div>
             <div class="detail-row">
                 <span>Total Fare:</span>
-                <span>£${fareAmount}</span>
+                <span><strong>£${fareAmount}</strong></span>
             </div>
         </div>
 
+        ${data.user_account_created ? `
+        <div class="account-info">
+            <strong>🎉 Account Created!</strong><br>
+            We've created an account for you using your email address. You can now:
+            <ul>
+                <li>Track all your bookings in one place</li>
+                <li>Save your preferences for future rides</li>
+                <li>Access exclusive member benefits</li>
+            </ul>
+        </div>
+        ` : ''}
+
         <div class="payment-info">
-            <strong>💰 Payment Status:</strong> ${data.payment_method === 'card' ? 'Paid' : 'Cash Payment on Arrival'}
-            ${data.payment_method === 'card' ? '<br><small>Your payment has been processed successfully.</small>' : '<br><small>Please have the exact amount ready for your driver.</small>'}
+            <strong>💳 Payment Method:</strong> ${data.payment_method === 'stripe' ? 'Card Payment' : 'Cash/Bank Transfer'}<br>
+            ${data.payment_method === 'cash_bank' ? 'Please have the exact fare amount ready (£' + fareAmount + ')' : 'Payment has been processed successfully'}
         </div>
 
         <div class="contact-info">
@@ -286,7 +370,9 @@ function generateCustomerBookingEmail(data: BookingConfirmationRequest, bookingR
 
 function generateAdminNotificationEmail(data: BookingConfirmationRequest, bookingRef: string, formattedPickupTime: string): string {
   const fareAmount = data.booking_details.fare_estimate.toFixed(2)
-  const vehicleType = data.booking_details.vehicle_type || 'Standard Vehicle'
+  const vehicleType = data.booking_details.vehicle_features?.length > 0 
+    ? data.booking_details.vehicle_features.join(', ') 
+    : 'Standard Vehicle'
   
   return `
 <!DOCTYPE html>
@@ -392,6 +478,13 @@ function generateAdminNotificationEmail(data: BookingConfirmationRequest, bookin
             margin: 15px 0;
             border-left: 4px solid #dc2626;
         }
+        .account-status {
+            background: #d1ecf1;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #17a2b8;
+        }
         @media (max-width: 600px) {
             .detail-row { flex-direction: column; }
             .detail-row span:first-child { font-weight: bold; margin-bottom: 5px; }
@@ -427,19 +520,23 @@ function generateAdminNotificationEmail(data: BookingConfirmationRequest, bookin
                 <span>${data.guest_phone}</span>
             </div>
             <div class="detail-row">
-                <span>Booking Reference:</span>
-                <span><strong>${bookingRef}</strong></span>
+                <span>Account Status:</span>
+                <span>${data.user_account_created ? '✅ Account Created' : '👤 Guest User'}</span>
             </div>
         </div>
 
         <div class="booking-details">
             <h3>🚗 Journey Details</h3>
             <div class="detail-row">
+                <span>Booking Reference:</span>
+                <span><strong>${bookingRef}</strong></span>
+            </div>
+            <div class="detail-row">
                 <span>Pickup Address:</span>
                 <span>${data.booking_details.pickup_address}</span>
             </div>
             <div class="detail-row">
-                <span>Destination:</span>
+                <span>Drop-off Address:</span>
                 <span>${data.booking_details.dropoff_address}</span>
             </div>
             <div class="detail-row">
@@ -447,16 +544,20 @@ function generateAdminNotificationEmail(data: BookingConfirmationRequest, bookin
                 <span>${formattedPickupTime}</span>
             </div>
             <div class="detail-row">
-                <span>Vehicle Type:</span>
+                <span>Vehicle Requirements:</span>
                 <span>${vehicleType}</span>
             </div>
             <div class="detail-row">
+                <span>Support Workers:</span>
+                <span>${data.booking_details.support_workers_count}</span>
+            </div>
+            <div class="detail-row">
                 <span>Payment Method:</span>
-                <span>${data.payment_method}</span>
+                <span>${data.payment_method === 'stripe' ? 'Card Payment' : 'Cash/Bank Transfer'}</span>
             </div>
             <div class="detail-row">
                 <span>Total Fare:</span>
-                <span>£${fareAmount}</span>
+                <span><strong>£${fareAmount}</strong></span>
             </div>
         </div>
 
@@ -468,23 +569,19 @@ function generateAdminNotificationEmail(data: BookingConfirmationRequest, bookin
         ` : ''}
 
         <div class="action-buttons">
-            <a href="https://ablegobefore.netlify.app/admin/bookings" class="action-button">📋 View in Admin Dashboard</a>
-            <a href="mailto:${data.guest_email}" class="action-button secondary-button">📧 Contact Customer</a>
-        </div>
-
-        <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <strong>📊 Quick Stats:</strong><br>
-            • Booking ID: ${data.booking_id}<br>
-            • Created: ${new Date().toLocaleString('en-GB')}<br>
-            • Payment Status: ${data.payment_method === 'card' ? 'Paid' : 'Pending (Cash)'}<br>
-            • User Account: ${data.user_account_created ? 'Created' : 'Guest Booking'}
+            <a href="https://ablego.co.uk/admin/bookings/${data.booking_id}" class="action-button">
+                📋 View Booking Details
+            </a>
+            <a href="https://ablego.co.uk/admin/drivers" class="action-button secondary-button">
+                🚗 Assign Driver
+            </a>
         </div>
 
         <div class="footer">
-            <p><strong>AbleGo Ltd - Admin Portal</strong><br>
+            <p><strong>AbleGo Admin Dashboard</strong><br>
             Professional Transport Services<br>
             admin@ablego.co.uk | www.ablego.co.uk</p>
-            <small>This notification was automatically generated by the AbleGo booking system</small>
+            <small>This is an automated notification from the AbleGo booking system</small>
         </div>
     </div>
 </body>
