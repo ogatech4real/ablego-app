@@ -116,6 +116,7 @@ BEGIN
 END $$;
 
 -- 5. Update existing records to have proper email_type and email_status
+-- First, update the text values before converting to enum
 UPDATE admin_email_notifications 
 SET email_type = CASE 
     WHEN notification_type = 'booking_confirmation' THEN 'booking_confirmation'
@@ -144,14 +145,25 @@ SET priority = CASE
 END
 WHERE priority IS NULL OR priority = 1;
 
--- 7. Create indexes for better email processing performance
+-- 7. Now convert the columns to use enum types (after data is properly set)
+-- Convert email_type column to use the enum type
+ALTER TABLE admin_email_notifications 
+ALTER COLUMN email_type TYPE email_type 
+USING email_type::email_type;
+
+-- Convert email_status column to use the enum type
+ALTER TABLE admin_email_notifications 
+ALTER COLUMN email_status TYPE email_status 
+USING email_status::email_status;
+
+-- 8. Create indexes for better email processing performance
 CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_status ON admin_email_notifications(email_status);
 CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_type ON admin_email_notifications(email_type);
 CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_priority ON admin_email_notifications(priority);
 CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_created_at ON admin_email_notifications(created_at);
 CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_retry_count ON admin_email_notifications(retry_count);
 
--- 8. Create RLS policies for email configuration table
+-- 9. Create RLS policies for email configuration table
 ALTER TABLE email_configuration ENABLE ROW LEVEL SECURITY;
 
 -- Only admin can manage email configuration
@@ -166,7 +178,7 @@ CREATE POLICY "Admin can manage email configuration" ON email_configuration
         )
     );
 
--- 9. Insert default email configuration (Gmail SMTP for testing)
+-- 10. Insert default email configuration (Gmail SMTP for testing)
 INSERT INTO email_configuration (
     smtp_host,
     smtp_port,
@@ -187,7 +199,7 @@ INSERT INTO email_configuration (
     true
 ) ON CONFLICT DO NOTHING;
 
--- 10. Create function to process email queue
+-- 11. Create function to process email queue
 CREATE OR REPLACE FUNCTION process_email_queue()
 RETURNS JSON
 LANGUAGE plpgsql
@@ -214,11 +226,11 @@ BEGIN
 END;
 $$;
 
--- 11. Grant permissions
+-- 12. Grant permissions
 GRANT EXECUTE ON FUNCTION process_email_queue() TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON email_configuration TO authenticated;
 
--- 12. Create view for email delivery monitoring
+-- 13. Create view for email delivery monitoring
 CREATE OR REPLACE VIEW email_delivery_stats AS
 SELECT 
     email_type,
@@ -232,7 +244,7 @@ WHERE created_at >= NOW() - INTERVAL '30 days'
 GROUP BY email_type, email_status
 ORDER BY email_type, email_status;
 
--- 13. Add comments for documentation
+-- 14. Add comments for documentation
 COMMENT ON TABLE email_configuration IS 'SMTP configuration for email delivery';
 COMMENT ON TABLE admin_email_notifications IS 'Email queue and delivery tracking';
 COMMENT ON FUNCTION process_email_queue() IS 'Manually trigger email queue processing';
