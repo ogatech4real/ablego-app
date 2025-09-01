@@ -32,7 +32,6 @@ interface SMTPConfig {
   secure: boolean;
 }
 
-// Email delivery configuration
 const BATCH_SIZE = 10;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 5000; // 5 seconds
@@ -53,14 +52,13 @@ serve(async (req) => {
       function: 'email-delivery-system'
     })
 
-    // Get pending emails ordered by priority and creation time
     const { data: pendingEmails, error: fetchError } = await supabaseClient
       .from('admin_email_notifications')
       .select('*')
       .in('email_status', ['queued', 'failed'])
       .lt('retry_count', MAX_RETRIES)
-      .order('priority', { ascending: false }) // Higher priority first
-      .order('created_at', { ascending: true }) // Older emails first
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: true })
       .limit(BATCH_SIZE)
 
     if (fetchError) {
@@ -90,12 +88,10 @@ serve(async (req) => {
     let successful = 0
     let failed = 0
 
-    // Get SMTP configuration
     const smtpConfig = await getSMTPConfiguration(supabaseClient)
 
     for (const email of pendingEmails) {
       try {
-        // Mark as processing
         await supabaseClient
           .from('admin_email_notifications')
           .update({
@@ -106,11 +102,9 @@ serve(async (req) => {
 
         console.log(`📧 Sending ${email.email_type} email to ${email.recipient_email}`)
 
-        // Send email using multiple methods
-        const emailResult = await sendEmailWithFallback(email, smtpConfig)
+        const emailResult = await sendEmailWithFallback(email, smtpConfig, supabaseClient)
 
         if (emailResult.success) {
-          // Mark as sent
           await supabaseClient
             .from('admin_email_notifications')
             .update({
@@ -134,7 +128,6 @@ serve(async (req) => {
           console.log(`✅ Email sent successfully: ${email.email_type} to ${email.recipient_email}`)
 
         } else {
-          // Mark as failed and increment retry count
           const newRetryCount = email.retry_count + 1
           const newStatus = newRetryCount >= MAX_RETRIES ? 'failed' : 'failed'
 
@@ -162,7 +155,6 @@ serve(async (req) => {
           console.log(`❌ Email failed: ${email.email_type} to ${email.recipient_email} (attempt ${newRetryCount}/${MAX_RETRIES})`)
         }
 
-        // Small delay between emails to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 100))
 
       } catch (emailError) {
@@ -195,9 +187,9 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Email delivery system error:', error)
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Email delivery system failed',
-        details: error.message 
+        details: error.message
       }),
       {
         status: 500,
@@ -208,7 +200,6 @@ serve(async (req) => {
 })
 
 async function getSMTPConfiguration(supabaseClient: any): Promise<SMTPConfig | null> {
-  // Try to get SMTP config from database first
   try {
     const { data: smtpConfig, error } = await supabaseClient
       .from('email_configuration')
@@ -217,6 +208,7 @@ async function getSMTPConfiguration(supabaseClient: any): Promise<SMTPConfig | n
       .single()
 
     if (smtpConfig && !error) {
+      console.log('✅ Found SMTP configuration in database')
       return {
         host: smtpConfig.smtp_host,
         port: smtpConfig.smtp_port,
@@ -231,13 +223,14 @@ async function getSMTPConfiguration(supabaseClient: any): Promise<SMTPConfig | n
     console.log('No database SMTP configuration found, trying environment variables')
   }
 
-  // Fallback to environment variables
+  // Fallback to environment variables if database config not found
   const envHost = Deno.env.get('SMTP_HOST')
   const envPort = Deno.env.get('SMTP_PORT')
   const envUsername = Deno.env.get('SMTP_USERNAME')
   const envPassword = Deno.env.get('SMTP_PASSWORD')
 
   if (envHost && envPort && envUsername && envPassword) {
+    console.log('✅ Found SMTP configuration in environment variables')
     return {
       host: envHost,
       port: parseInt(envPort),
@@ -249,7 +242,8 @@ async function getSMTPConfiguration(supabaseClient: any): Promise<SMTPConfig | n
     }
   }
 
-  // Default Gmail SMTP configuration (for testing)
+  // Final fallback to Gmail
+  console.log('⚠️ Using Gmail fallback SMTP configuration')
   return {
     host: 'smtp.gmail.com',
     port: 587,
@@ -261,17 +255,17 @@ async function getSMTPConfiguration(supabaseClient: any): Promise<SMTPConfig | n
   }
 }
 
-async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPConfig | null): Promise<{
+async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPConfig | null, supabaseClient: any): Promise<{
   success: boolean;
   method?: string;
   details?: any;
   error?: any;
 }> {
-  // Method 1: Try SMTP (if configured)
+  // Method 1: Try database SMTP configuration first
   if (smtpConfig && smtpConfig.username && smtpConfig.password) {
     try {
-      console.log('📧 Attempting SMTP delivery...')
-      
+      console.log('📧 Attempting database SMTP delivery...')
+
       const client = new SMTPClient({
         connection: {
           hostname: smtpConfig.host,
@@ -296,7 +290,7 @@ async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPC
 
       return {
         success: true,
-        method: 'smtp',
+        method: 'database_smtp',
         details: {
           host: smtpConfig.host,
           port: smtpConfig.port,
@@ -304,16 +298,41 @@ async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPC
         }
       }
     } catch (error) {
-      console.log('❌ SMTP failed:', error.message)
+      console.log('❌ Database SMTP failed:', error.message)
     }
   }
 
-  // Method 2: Try Resend API (if configured)
+  // Method 2: Try the dedicated send-email function
+  try {
+    console.log('📧 Attempting send-email function...')
+
+    const { data, error } = await supabaseClient.functions.invoke('send-email', {
+      body: {
+        to: email.recipient_email,
+        subject: email.subject,
+        html: email.html_content
+      }
+    })
+
+    if (!error && data?.success) {
+      return {
+        success: true,
+        method: 'send-email_function',
+        details: data
+      }
+    } else {
+      throw new Error(error?.message || 'Send-email function failed')
+    }
+  } catch (error) {
+    console.log('❌ Send-email function failed:', error.message)
+  }
+
+  // Method 3: Try Resend API
   const resendApiKey = Deno.env.get('RESEND_API_KEY')
   if (resendApiKey) {
     try {
       console.log('📧 Attempting Resend API...')
-      
+
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -344,12 +363,12 @@ async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPC
     }
   }
 
-  // Method 3: Try SendGrid (if configured)
+  // Method 4: Try SendGrid API
   const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY')
   if (sendgridApiKey) {
     try {
       console.log('📧 Attempting SendGrid API...')
-      
+
       const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
         headers: {
@@ -384,13 +403,10 @@ async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPC
     }
   }
 
-  // Method 4: Try Supabase Auth email (fallback)
+  // Method 5: Try Supabase Auth email as last resort
   try {
     console.log('📧 Attempting Supabase Auth email...')
-    
-    // This is a fallback method using Supabase's built-in email capabilities
-    // Note: This may not work for all email types but can be useful for simple notifications
-    
+
     const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/auth/v1/admin/generate_link`, {
       method: 'POST',
       headers: {
@@ -420,12 +436,11 @@ async function sendEmailWithFallback(email: EmailNotification, smtpConfig: SMTPC
     console.log('❌ Supabase Auth email failed:', error.message)
   }
 
-  // All methods failed
   return {
     success: false,
     error: {
       message: 'All email sending methods failed',
-      attempted_methods: ['smtp', 'resend', 'sendgrid', 'supabase_auth'],
+      attempted_methods: ['database_smtp', 'send-email_function', 'resend', 'sendgrid', 'supabase_auth'],
       email_type: email.email_type,
       retry_count: email.retry_count,
       recipient: email.recipient_email
