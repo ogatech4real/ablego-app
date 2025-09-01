@@ -116,23 +116,52 @@ BEGIN
 END $$;
 
 -- 5. Update existing records to have proper email_type and email_status
--- First, update the text values before converting to enum
-UPDATE admin_email_notifications 
-SET email_type = CASE 
-    WHEN notification_type = 'booking_confirmation' THEN 'booking_confirmation'
-    WHEN notification_type = 'payment_confirmation' THEN 'payment_receipt'
-    WHEN notification_type = 'admin_booking_notification' THEN 'admin_notification'
-    WHEN notification_type = 'admin_driver_assignment' THEN 'admin_notification'
-    ELSE 'admin_notification'
-END
-WHERE email_type IS NULL OR email_type = 'admin_notification';
+-- Check if email_type column is still TEXT type before updating
+DO $$
+DECLARE
+    col_type text;
+BEGIN
+    -- Get the current data type of email_type column
+    SELECT data_type INTO col_type
+    FROM information_schema.columns 
+    WHERE table_name = 'admin_email_notifications' 
+    AND column_name = 'email_type';
+    
+    -- Only update if the column is still TEXT type
+    IF col_type = 'text' THEN
+        UPDATE admin_email_notifications 
+        SET email_type = CASE 
+            WHEN notification_type = 'booking_confirmation' THEN 'booking_confirmation'
+            WHEN notification_type = 'payment_confirmation' THEN 'payment_receipt'
+            WHEN notification_type = 'admin_booking_notification' THEN 'admin_notification'
+            WHEN notification_type = 'admin_driver_assignment' THEN 'admin_notification'
+            ELSE 'admin_notification'
+        END
+        WHERE email_type IS NULL OR email_type = 'admin_notification';
+    END IF;
+END $$;
 
-UPDATE admin_email_notifications 
-SET email_status = CASE 
-    WHEN sent = true THEN 'sent'
-    ELSE 'queued'
-END
-WHERE email_status IS NULL;
+-- Check if email_status column is still TEXT type before updating
+DO $$
+DECLARE
+    col_type text;
+BEGIN
+    -- Get the current data type of email_status column
+    SELECT data_type INTO col_type
+    FROM information_schema.columns 
+    WHERE table_name = 'admin_email_notifications' 
+    AND column_name = 'email_status';
+    
+    -- Only update if the column is still TEXT type
+    IF col_type = 'text' THEN
+        UPDATE admin_email_notifications 
+        SET email_status = CASE 
+            WHEN sent = true THEN 'sent'
+            ELSE 'queued'
+        END
+        WHERE email_status IS NULL;
+    END IF;
+END $$;
 
 -- 6. Set proper priorities for different email types
 UPDATE admin_email_notifications 
@@ -146,15 +175,43 @@ END
 WHERE priority IS NULL OR priority = 1;
 
 -- 7. Now convert the columns to use enum types (after data is properly set)
--- Convert email_type column to use the enum type
-ALTER TABLE admin_email_notifications 
-ALTER COLUMN email_type TYPE email_type 
-USING email_type::email_type;
+-- Convert email_type column to use the enum type only if it's still TEXT
+DO $$
+DECLARE
+    col_type text;
+BEGIN
+    -- Get the current data type of email_type column
+    SELECT data_type INTO col_type
+    FROM information_schema.columns 
+    WHERE table_name = 'admin_email_notifications' 
+    AND column_name = 'email_type';
+    
+    -- Only convert if the column is still TEXT type
+    IF col_type = 'text' THEN
+        ALTER TABLE admin_email_notifications 
+        ALTER COLUMN email_type TYPE email_type 
+        USING email_type::email_type;
+    END IF;
+END $$;
 
--- Convert email_status column to use the enum type
-ALTER TABLE admin_email_notifications 
-ALTER COLUMN email_status TYPE email_status 
-USING email_status::email_status;
+-- Convert email_status column to use the enum type only if it's still TEXT
+DO $$
+DECLARE
+    col_type text;
+BEGIN
+    -- Get the current data type of email_status column
+    SELECT data_type INTO col_type
+    FROM information_schema.columns 
+    WHERE table_name = 'admin_email_notifications' 
+    AND column_name = 'email_status';
+    
+    -- Only convert if the column is still TEXT type
+    IF col_type = 'text' THEN
+        ALTER TABLE admin_email_notifications 
+        ALTER COLUMN email_status TYPE email_status 
+        USING email_status::email_status;
+    END IF;
+END $$;
 
 -- 8. Create indexes for better email processing performance
 CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_status ON admin_email_notifications(email_status);
