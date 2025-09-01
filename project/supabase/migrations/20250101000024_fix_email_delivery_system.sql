@@ -85,33 +85,111 @@ BEGIN
 END $$;
 
 -- 3. Update existing records to have proper email_type and email_status
-UPDATE admin_email_notifications 
-SET email_type = CASE 
-    WHEN notification_type = 'booking_confirmation' THEN 'booking_confirmation'
-    WHEN notification_type = 'payment_confirmation' THEN 'payment_receipt'
-    WHEN notification_type = 'admin_booking_notification' THEN 'admin_notification'
-    WHEN notification_type = 'admin_driver_assignment' THEN 'admin_notification'
-    ELSE 'admin_notification'
-END
-WHERE email_type IS NULL OR email_type = 'admin_notification';
+-- Handle email_type update based on current column type
+DO $$
+DECLARE
+    col_type text;
+BEGIN
+    -- Get the current data type of email_type column
+    SELECT data_type INTO col_type
+    FROM information_schema.columns 
+    WHERE table_name = 'admin_email_notifications' 
+    AND column_name = 'email_type';
+    
+    -- Update based on column type
+    IF col_type = 'text' THEN
+        -- Column is TEXT type
+        UPDATE admin_email_notifications 
+        SET email_type = CASE 
+            WHEN notification_type = 'booking_confirmation' THEN 'booking_confirmation'
+            WHEN notification_type = 'payment_confirmation' THEN 'payment_receipt'
+            WHEN notification_type = 'admin_booking_notification' THEN 'admin_notification'
+            WHEN notification_type = 'admin_driver_assignment' THEN 'admin_notification'
+            ELSE 'admin_notification'
+        END
+        WHERE email_type IS NULL OR email_type = 'admin_notification';
+    ELSE
+        -- Column is enum type, use proper casting
+        UPDATE admin_email_notifications 
+        SET email_type = CASE 
+            WHEN notification_type = 'booking_confirmation' THEN 'booking_confirmation'::email_type
+            WHEN notification_type = 'payment_confirmation' THEN 'payment_receipt'::email_type
+            WHEN notification_type = 'admin_booking_notification' THEN 'admin_notification'::email_type
+            WHEN notification_type = 'admin_driver_assignment' THEN 'admin_notification'::email_type
+            ELSE 'admin_notification'::email_type
+        END
+        WHERE email_type IS NULL OR email_type = 'admin_notification'::email_type;
+    END IF;
+END $$;
 
-UPDATE admin_email_notifications 
-SET email_status = CASE 
-    WHEN sent = true THEN 'sent'
-    ELSE 'queued'
-END
-WHERE email_status IS NULL;
+-- Handle email_status update based on current column type
+DO $$
+DECLARE
+    col_type text;
+BEGIN
+    -- Get the current data type of email_status column
+    SELECT data_type INTO col_type
+    FROM information_schema.columns 
+    WHERE table_name = 'admin_email_notifications' 
+    AND column_name = 'email_status';
+    
+    -- Update based on column type
+    IF col_type = 'text' THEN
+        -- Column is TEXT type
+        UPDATE admin_email_notifications 
+        SET email_status = CASE 
+            WHEN sent = true THEN 'sent'
+            ELSE 'queued'
+        END
+        WHERE email_status IS NULL;
+    ELSE
+        -- Column is enum type, use proper casting
+        UPDATE admin_email_notifications 
+        SET email_status = CASE 
+            WHEN sent = true THEN 'sent'::email_status
+            ELSE 'queued'::email_status
+        END
+        WHERE email_status IS NULL;
+    END IF;
+END $$;
 
 -- 4. Set proper priorities for different email types
-UPDATE admin_email_notifications 
-SET priority = CASE 
-    WHEN email_type = 'booking_confirmation' THEN 1
-    WHEN email_type = 'payment_receipt' THEN 1
-    WHEN email_type = 'driver_assignment' THEN 2
-    WHEN email_type = 'admin_notification' THEN 3
-    ELSE 3
-END
-WHERE priority IS NULL OR priority = 1;
+-- Handle priority update based on current column type
+DO $$
+DECLARE
+    col_type text;
+BEGIN
+    -- Get the current data type of email_type column
+    SELECT data_type INTO col_type
+    FROM information_schema.columns 
+    WHERE table_name = 'admin_email_notifications' 
+    AND column_name = 'email_type';
+    
+    -- Update priorities based on column type
+    IF col_type = 'text' THEN
+        -- Column is still TEXT type
+        UPDATE admin_email_notifications 
+        SET priority = CASE 
+            WHEN email_type = 'booking_confirmation' THEN 1
+            WHEN email_type = 'payment_receipt' THEN 1
+            WHEN email_type = 'driver_assignment' THEN 2
+            WHEN email_type = 'admin_notification' THEN 3
+            ELSE 3
+        END
+        WHERE priority IS NULL OR priority = 1;
+    ELSE
+        -- Column is enum type
+        UPDATE admin_email_notifications 
+        SET priority = CASE 
+            WHEN email_type = 'booking_confirmation'::email_type THEN 1
+            WHEN email_type = 'payment_receipt'::email_type THEN 1
+            WHEN email_type = 'driver_assignment'::email_type THEN 2
+            WHEN email_type = 'admin_notification'::email_type THEN 3
+            ELSE 3
+        END
+        WHERE priority IS NULL OR priority = 1;
+    END IF;
+END $$;
 
 -- 5. Create indexes for better email processing performance
 CREATE INDEX IF NOT EXISTS idx_admin_email_notifications_status ON admin_email_notifications(email_status);
