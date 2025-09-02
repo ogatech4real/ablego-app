@@ -57,7 +57,7 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className={`navbar sticky top-0 z-50 w-full transition-all duration-300 bg-white/95 dark:bg-dark-800/95 backdrop-blur-md shadow-lg`}>
+    <nav className={`navbar relative z-50 w-full transition-all duration-300 bg-white/95 dark:bg-dark-800/95 backdrop-blur-md shadow-lg`}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
@@ -72,9 +72,7 @@ const Navbar: React.FC = () => {
               alt="AbleGo Logo"
               className="h-8 w-8 lg:h-10 lg:w-10 object-contain"
             />
-            <span className={`text-xl lg:text-2xl font-bold transition-colors duration-300 ${
-              isScrolled ? 'text-gray-900 dark:text-gray-50' : 'text-gray-900 dark:text-gray-50'
-            }`}>
+            <span className={`text-xl lg:text-2xl font-bold transition-colors duration-300 text-gray-900 dark:text-gray-50`}>
               AbleGo
             </span>
           </Link>
