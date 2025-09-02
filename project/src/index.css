@@ -2,10 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dark mode styles */
+/* Theme system - applied to both html and body */
 @layer base {
   html {
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-property: color-scheme;
     transition-duration: 300ms;
   }
   
@@ -16,175 +16,200 @@
     transition-duration: 300ms;
   }
   
-  .dark body {
+  /* Dark mode styles - applied when either html.dark or body.dark is present */
+  html.dark body,
+  body.dark {
     background-color: rgb(15 23 42);
     color: rgb(243 244 246);
   }
   
-  .dark {
+  html.dark {
     color-scheme: dark;
   }
   
   /* Dark mode card backgrounds */
-  .dark .bg-white {
+  html.dark .bg-white,
+  body.dark .bg-white {
     background-color: rgb(30 41 59);
     border-color: rgb(51 65 85);
   }
   
   /* Dark mode text colors with better contrast */
-  .dark .text-gray-900 {
+  html.dark .text-gray-900,
+  body.dark .text-gray-900 {
     color: rgb(249 250 251);
   }
   
-  .dark .text-gray-800 {
+  html.dark .text-gray-800,
+  body.dark .text-gray-800 {
     color: rgb(243 244 246);
   }
   
-  .dark .text-gray-700 {
+  html.dark .text-gray-700,
+  body.dark .text-gray-700 {
     color: rgb(229 231 235);
   }
   
-  .dark .text-gray-600 {
+  html.dark .text-gray-600,
+  body.dark .text-gray-600 {
     color: rgb(209 213 219);
   }
   
-  .dark .text-gray-500 {
+  html.dark .text-gray-500,
+  body.dark .text-gray-500 {
     color: rgb(156 163 175);
   }
   
   /* Dark mode borders */
-  .dark .border-gray-200 {
+  html.dark .border-gray-200,
+  body.dark .border-gray-200 {
     border-color: rgb(51 65 85);
   }
   
-  .dark .border-gray-300 {
+  html.dark .border-gray-300,
+  body.dark .border-gray-300 {
     border-color: rgb(71 85 105);
   }
   
-  .dark .border-gray-400 {
+  html.dark .border-gray-400,
+  body.dark .border-gray-400 {
     border-color: rgb(100 116 139);
   }
   
   /* Dark mode form inputs */
-  .dark input,
-  .dark textarea,
-  .dark select {
+  html.dark input,
+  html.dark textarea,
+  html.dark select,
+  body.dark input,
+  body.dark textarea,
+  body.dark select {
     background-color: rgb(30 41 59);
     border-color: rgb(71 85 105);
     color: rgb(243 244 246);
   }
   
-  .dark input::placeholder,
-  .dark textarea::placeholder {
+  html.dark input::placeholder,
+  html.dark textarea::placeholder,
+  body.dark input::placeholder,
+  body.dark textarea::placeholder {
     color: rgb(156 163 175);
   }
   
-  .dark input:focus,
-  .dark textarea:focus,
-  .dark select:focus {
+  html.dark input:focus,
+  html.dark textarea:focus,
+  html.dark select:focus,
+  body.dark input:focus,
+  body.dark textarea:focus,
+  body.dark select:focus {
     border-color: rgb(59 130 246);
     --tw-ring-color: rgb(59 130 246);
     --tw-ring-opacity: 0.5;
   }
   
   /* Dark mode hover states */
-  .dark .hover\:bg-gray-50:hover {
+  html.dark .hover\:bg-gray-50:hover,
+  body.dark .hover\:bg-gray-50:hover {
     background-color: rgb(51 65 85);
   }
   
-  .dark .hover\:bg-gray-100:hover {
+  html.dark .hover\:bg-gray-100:hover,
+  body.dark .hover\:bg-gray-100:hover {
     background-color: rgb(71 85 105);
   }
   
-  .dark .hover\:bg-gray-200:hover {
+  html.dark .hover\:bg-gray-200:hover,
+  body.dark .hover\:bg-gray-200:hover {
     background-color: rgb(100 116 139);
   }
   
   /* Dark mode gradient backgrounds */
-  .dark .bg-gradient-to-br.from-blue-50 {
+  html.dark .bg-gradient-to-br.from-blue-50 {
     --tw-gradient-from: rgb(15 23 42);
   }
   
-  .dark .bg-gradient-to-br.to-teal-50 {
+  html.dark .bg-gradient-to-br.to-teal-50 {
     --tw-gradient-to: rgb(30 41 59);
   }
   
-  .dark .bg-gray-50 {
+  html.dark .bg-gray-50,
+  body.dark .bg-gray-50 {
     background-color: rgb(30 41 59);
   }
   
-  .dark .bg-gray-100 {
+  html.dark .bg-gray-100,
+  body.dark .bg-gray-100 {
     background-color: rgb(51 65 85);
   }
   
-  .dark .bg-gray-200 {
+  html.dark .bg-gray-200,
+  body.dark .bg-gray-200 {
     background-color: rgb(71 85 105);
   }
   
   /* Dark mode shadows */
-  .dark .shadow-lg {
+  html.dark .shadow-lg {
     box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.5), 0 4px 6px -4px rgb(15 23 42 / 0.5);
   }
   
-  .dark .shadow-xl {
+  html.dark .shadow-xl {
     box-shadow: 0 20px 25px -5px rgb(15 23 42 / 0.6), 0 10px 10px -5px rgb(15 23 42 / 0.6);
   }
   
   /* Dark mode backdrop blur */
-  .dark .backdrop-blur-md {
+  html.dark .backdrop-blur-md {
     backdrop-filter: blur(12px);
     background-color: rgb(30 41 59 / 0.8);
   }
   
   /* Dark mode button states */
-  .dark .bg-blue-50 {
+  html.dark .bg-blue-50 {
     @apply bg-blue-900/20;
   }
   
-  .dark .bg-teal-50 {
+  html.dark .bg-teal-50 {
     @apply bg-teal-900/20;
   }
   
-  .dark .bg-purple-50 {
+  html.dark .bg-purple-50 {
     @apply bg-purple-900/20;
   }
   
-  .dark .hover\:bg-blue-50:hover {
+  html.dark .hover\:bg-blue-50:hover {
     @apply bg-blue-900/30;
   }
   
-  .dark .hover\:bg-teal-50:hover {
+  html.dark .hover\:bg-teal-50:hover {
     @apply bg-teal-900/30;
   }
   
-  .dark .hover\:bg-purple-50:hover {
+  html.dark .hover\:bg-purple-50:hover {
     @apply bg-purple-900/30;
   }
   
   /* Dark mode modal backgrounds */
-  .dark .bg-black.bg-opacity-50 {
+  html.dark .bg-black.bg-opacity-50 {
     background-color: rgb(0 0 0);
     --tw-bg-opacity: 0.7;
   }
   
   /* Dark mode navigation specific styles */
-  .dark .navbar {
+  html.dark .navbar {
     background-color: rgb(30 41 59 / 0.95);
     backdrop-filter: blur(12px);
   }
   
-  .dark .navbar.scrolled {
+  html.dark .navbar.scrolled {
     background-color: rgb(30 41 59 / 0.95);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
   
   /* Dark mode accessibility improvements */
-  .dark .focus\:ring-blue-500:focus {
+  html.dark .focus\:ring-blue-500:focus {
     --tw-ring-color: rgb(96 165 250);
     --tw-ring-opacity: 0.5;
   }
   
-  .dark .focus\:ring-offset-2:focus {
+  html.dark .focus\:ring-offset-2:focus {
     --tw-ring-offset-color: rgb(30 41 59);
   }
 }
@@ -203,7 +228,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
-.dark .theme-toggle {
+html.dark .theme-toggle {
   background: #1e293b !important;
   border: 2px solid #475569 !important;
   color: #fbbf24 !important;
@@ -215,21 +240,21 @@
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25) !important;
 }
 
-.dark .theme-toggle:hover {
+html.dark .theme-toggle:hover {
   box-shadow: 0 8px 25px rgba(251, 191, 36, 0.3) !important;
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-  .dark .bg-dark-800 {
+  html.dark .bg-dark-800 {
     background-color: rgb(0 0 0);
   }
   
-  .dark .text-gray-100 {
+  html.dark .text-gray-100 {
     color: rgb(255 255 255);
   }
   
-  .dark .border-dark-700 {
+  html.dark .border-dark-700 {
     border-color: rgb(255 255 255);
   }
 }
@@ -252,6 +277,6 @@
   outline-offset: 2px;
 }
 
-.dark *:focus-visible {
+html.dark *:focus-visible {
   outline-color: #60A5FA;
 }

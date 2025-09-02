@@ -41,14 +41,12 @@ function App() {
     } else {
       root.classList.remove('dark');
     }
-    root.setAttribute('data-theme', theme);
   }, [theme]);
 
   return (
     <ErrorBoundary>
       <Helmet>
         <html lang="en" />
-        <body className={theme === 'dark' ? 'dark' : ''} />
         <meta name="theme-color" content={theme === 'dark' ? '#0f172a' : '#ffffff'} />
       </Helmet>
       <Router>

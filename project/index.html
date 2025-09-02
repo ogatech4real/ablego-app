@@ -157,6 +157,11 @@
     <style>
       /* Prevent flash of unstyled content */
       html {
+        color-scheme: light;
+        transition: color-scheme 0.3s ease;
+      }
+      
+      html.dark {
         color-scheme: dark;
       }
       
@@ -164,23 +169,15 @@
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
         line-height: 1.6;
         scroll-behavior: smooth;
-        background-color: #0f172a;
-        color: #f8fafc;
-      }
-      
-      /* Dark mode by default */
-      :root {
-        color-scheme: dark;
-      }
-      
-      /* Light mode styles (will be applied when light theme is active) */
-      html[data-theme="light"] {
-        color-scheme: light;
-      }
-      
-      html[data-theme="light"] body {
         background-color: #ffffff;
         color: #1f2937;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      
+      /* Dark mode styles (applied when .dark class is present) */
+      html.dark body {
+        background-color: #0f172a;
+        color: #f8fafc;
       }
       
       /* Accessibility improvements */
