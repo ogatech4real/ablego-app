@@ -134,12 +134,26 @@ const AboutPage: React.FC = () => {
 
       {/* Hero Section */}
       <section className="hero-section relative py-20 bg-gradient-to-br from-blue-50 via-white to-teal-50 dark:from-dark-900 dark:via-dark-800 dark:to-dark-700 overflow-hidden">
-        <div className="container mx-auto px-6">
+        {/* Background Video */}
+        <video
+          className="absolute inset-0 w-full h-full object-cover z-0"
+          src="/AbleGo_About_Us_Animation.mp4"
+          poster="/AbleGo.png"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+        />
+        {/* Overlay for readability */}
+        <div className="absolute inset-0 bg-black/40 z-0" />
+        <div className="container mx-auto px-6 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 dark:text-gray-50 mb-6">
-              About <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-600 dark:from-blue-400 dark:to-teal-400">AbleGo</span>
+            <h1 className="text-5xl lg:text-6xl font-bold text-gray-100 dark:text-gray-50 mb-6">
+              About <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-teal-300">AbleGo</span>
             </h1>
-            <p className="text-xl lg:text-2xl text-gray-600 dark:text-gray-300 leading-relaxed">
+            <p className="text-xl lg:text-2xl text-gray-100/90 dark:text-gray-200 leading-relaxed">
               We're on a mission to make transport accessible, supportive, and dignified for everyone.
             </p>
           </div>
