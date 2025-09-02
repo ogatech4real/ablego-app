@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useTheme } from './hooks/useTheme';
 import Navbar from './components/Navbar';
@@ -57,6 +57,7 @@ function App() {
             <Route path="/about" element={<AboutPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/booking" element={<BookingPage />} />
+            <Route path="/book" element={<Navigate to="/booking" replace />} />
             <Route path="/booking-status" element={<BookingStatusPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/safety" element={<SafetyPage />} />
