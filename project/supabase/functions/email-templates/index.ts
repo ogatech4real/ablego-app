@@ -13,7 +13,8 @@ export const EMAIL_CONFIG = {
     accountName: 'AbleGo Ltd',
     sortCode: '77-71-43',
     accountNumber: '00968562'
-  }
+  },
+  address: 'Victoria Building, Teesside University, Launchpad, Middlesbrough TS1 3BA'
 }
 
 export const EMAIL_STYLES = {
@@ -47,7 +48,7 @@ export function generateEmailFooter(): string {
         This email was sent from ${EMAIL_CONFIG.sender}
       </p>
       <p style="color: ${EMAIL_STYLES.lightTextColor}; font-size: 12px; margin: 0;">
-        ${EMAIL_CONFIG.company} • Middlesbrough, United Kingdom • Company No. 16619305<br>
+        ${EMAIL_CONFIG.company} • ${EMAIL_CONFIG.address} • Company No. 16619305<br>
         <a href="${EMAIL_CONFIG.website}/privacy-policy" style="color: ${EMAIL_STYLES.primaryColor}; text-decoration: none;">Privacy Policy</a> • 
         <a href="${EMAIL_CONFIG.website}/contact" style="color: ${EMAIL_STYLES.primaryColor}; text-decoration: none;">Contact Us</a>
       </p>

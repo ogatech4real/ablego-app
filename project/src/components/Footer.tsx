@@ -241,7 +241,7 @@ const Footer: React.FC = () => {
               <MapPin className="w-5 h-5 text-blue-400" />
               <div>
                 <p className="text-sm text-gray-400">Location</p>
-                <p className="text-white">Middlesbrough, UK</p>
+                <p className="text-white">Victoria Building, Teesside University, Launchpad, Middlesbrough TS1 3BA</p>
               </div>
             </div>
           </div>

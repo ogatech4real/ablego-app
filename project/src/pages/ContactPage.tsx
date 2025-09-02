@@ -35,7 +35,7 @@ const ContactPage: React.FC = () => {
         <div className="container mx-auto px-6">
           <div className="max-w-6xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-12">
-              {/* Contact Form */}
+            {/* Contact Form */}
               <div className="bg-gray-50 dark:bg-dark-800 rounded-2xl p-8">
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-50 mb-6">Send us a Message</h2>
                 <form className="space-y-6">
@@ -121,15 +121,15 @@ const ContactPage: React.FC = () => {
                     type="submit"
                     className="w-full bg-gradient-to-r from-blue-600 to-teal-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-dark-800 transition-all duration-300 flex items-center justify-center"
                   >
-                    <Send className="w-5 h-5 mr-2" />
-                    Send Message
+                        <Send className="w-5 h-5 mr-2" />
+                        Send Message
                   </button>
                 </form>
-              </div>
+            </div>
 
-              {/* Contact Information */}
-              <div className="space-y-8">
-                <div>
+            {/* Contact Information */}
+            <div className="space-y-8">
+              <div>
                   <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-50 mb-6">Contact Information</h2>
                   <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
                     We're here to help with all your accessible transport needs. Get in touch with us through any of the channels below.
@@ -139,11 +139,11 @@ const ContactPage: React.FC = () => {
                 <div className="space-y-6">
                   {/* Phone Support */}
                   <div className="bg-white dark:bg-dark-800 rounded-xl p-6 border border-gray-200 dark:border-dark-700">
-                    <div className="flex items-start">
+                  <div className="flex items-start">
                       <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mr-4">
                         <Phone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
+                    </div>
+                    <div>
                         <h3 className="font-semibold text-gray-900 dark:text-gray-50 mb-1">Phone Support</h3>
                         <p className="text-gray-600 dark:text-gray-400 mb-2">24/7 customer service and emergency support</p>
                         <a href="tel:01642089958" className="text-blue-600 dark:text-blue-400 font-medium hover:underline">
@@ -155,27 +155,27 @@ const ContactPage: React.FC = () => {
 
                   {/* Email Support */}
                   <div className="bg-white dark:bg-dark-800 rounded-xl p-6 border border-gray-200 dark:border-dark-700">
-                    <div className="flex items-start">
+                  <div className="flex items-start">
                       <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/30 rounded-full flex items-center justify-center mr-4">
                         <Mail className="w-6 h-6 text-teal-600 dark:text-teal-400" />
-                      </div>
-                      <div>
+                    </div>
+                    <div>
                         <h3 className="font-semibold text-gray-900 dark:text-gray-50 mb-1">Email Support</h3>
                         <p className="text-gray-600 dark:text-gray-400 mb-2">General inquiries and support</p>
                         <a href="mailto:hello@ablego.co.uk" className="text-teal-600 dark:text-teal-400 font-medium hover:underline">
-                          hello@ablego.co.uk
-                        </a>
+                        hello@ablego.co.uk
+                      </a>
                       </div>
                     </div>
                   </div>
 
                   {/* Office Hours */}
                   <div className="bg-white dark:bg-dark-800 rounded-xl p-6 border border-gray-200 dark:border-dark-700">
-                    <div className="flex items-start">
+                  <div className="flex items-start">
                       <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mr-4">
                         <Clock className="w-6 h-6 text-green-600 dark:text-green-400" />
-                      </div>
-                      <div>
+                    </div>
+                    <div>
                         <h3 className="font-semibold text-gray-900 dark:text-gray-50 mb-1">Office Hours</h3>
                         <p className="text-gray-600 dark:text-gray-400 mb-2">When we're available to help</p>
                         <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -190,16 +190,15 @@ const ContactPage: React.FC = () => {
 
                   {/* Location */}
                   <div className="bg-white dark:bg-dark-800 rounded-xl p-6 border border-gray-200 dark:border-dark-700">
-                    <div className="flex items-start">
+                  <div className="flex items-start">
                       <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mr-4">
                         <MapPin className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <div>
+                    </div>
+                    <div>
                         <h3 className="font-semibold text-gray-900 dark:text-gray-50 mb-1">Our Location</h3>
                         <p className="text-gray-600 dark:text-gray-400 mb-2">Headquarters and main office</p>
                         <p className="text-gray-600 dark:text-gray-400">
-                          Middlesbrough, United Kingdom<br />
-                          Serving the entire UK
+                          Victoria Building, Teesside University, Launchpad, Middlesbrough TS1 3BA
                         </p>
                       </div>
                     </div>
@@ -274,7 +273,7 @@ const ContactPage: React.FC = () => {
               Call Now
             </a>
           </div>
-        </div>
+    </div>
       </section>
     </>
   );
