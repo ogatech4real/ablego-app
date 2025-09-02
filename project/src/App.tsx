@@ -7,6 +7,7 @@ import Footer from './components/Footer';
 import ThemeToggle from './components/ThemeToggle';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
+import DashboardLayout from './components/DashboardLayout';
 
 // Lazy load admin pages for better performance
             const AdminBookingsPage = lazy(() => import('./pages/admin/AdminBookingsPage'));
@@ -112,11 +113,31 @@ function App() {
                         } />
             
             {/* Dashboard routes */}
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/dashboard/admin" element={<AdminDashboard />} />
-            <Route path="/dashboard/driver" element={<DriverDashboard />} />
-            <Route path="/dashboard/support" element={<SupportWorkerDashboard />} />
-            <Route path="/dashboard/rider" element={<RiderDashboard />} />
+            <Route path="/dashboard" element={
+              <DashboardLayout>
+                <DashboardPage />
+              </DashboardLayout>
+            } />
+            <Route path="/dashboard/admin" element={
+              <DashboardLayout>
+                <AdminDashboard />
+              </DashboardLayout>
+            } />
+            <Route path="/dashboard/driver" element={
+              <DashboardLayout>
+                <DriverDashboard />
+              </DashboardLayout>
+            } />
+            <Route path="/dashboard/support" element={
+              <DashboardLayout>
+                <SupportWorkerDashboard />
+              </DashboardLayout>
+            } />
+            <Route path="/dashboard/rider" element={
+              <DashboardLayout>
+                <RiderDashboard />
+              </DashboardLayout>
+            } />
             
             {/* Registration routes */}
             <Route path="/register-driver" element={<RegisterDriverPage />} />
