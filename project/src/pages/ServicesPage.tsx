@@ -49,8 +49,22 @@ const ServicesPage: React.FC = () => {
   return (
     <div className="pt-20">
       {/* Page Header */}
-      <section className="bg-gradient-to-br from-blue-600 via-blue-700 to-teal-600 text-white py-16">
-        <div className="container mx-auto px-6">
+      <section className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-teal-600 text-white py-16 overflow-hidden">
+        {/* Background Video */}
+        <video
+          className="absolute inset-0 w-full h-full object-cover z-0"
+          src="/hotpage.mp4"
+          poster="/AbleGo.png"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+        />
+        {/* Overlay for readability */}
+        <div className="absolute inset-0 bg-black/50 z-0" />
+        <div className="container mx-auto px-6 relative z-10">
           <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex p-4 bg-white/20 rounded-full mb-6">
               <Heart className="w-8 h-8" />
