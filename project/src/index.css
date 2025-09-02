@@ -5,11 +5,20 @@
 /* Dark mode styles */
 @layer base {
   html {
-    @apply transition-colors duration-300;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-duration: 300ms;
   }
   
   body {
-    @apply bg-white dark:bg-dark-900 text-gray-900 dark:text-gray-100 transition-colors duration-300;
+    background-color: rgb(255 255 255);
+    color: rgb(17 24 39);
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-duration: 300ms;
+  }
+  
+  .dark body {
+    background-color: rgb(15 23 42);
+    color: rgb(243 244 246);
   }
   
   .dark {
@@ -18,102 +27,113 @@
   
   /* Dark mode card backgrounds */
   .dark .bg-white {
-    @apply bg-dark-800 border-dark-700;
+    background-color: rgb(30 41 59);
+    border-color: rgb(51 65 85);
   }
   
   /* Dark mode text colors with better contrast */
   .dark .text-gray-900 {
-    @apply text-gray-50;
+    color: rgb(249 250 251);
   }
   
   .dark .text-gray-800 {
-    @apply text-gray-100;
+    color: rgb(243 244 246);
   }
   
   .dark .text-gray-700 {
-    @apply text-gray-200;
+    color: rgb(229 231 235);
   }
   
   .dark .text-gray-600 {
-    @apply text-gray-300;
+    color: rgb(209 213 219);
   }
   
   .dark .text-gray-500 {
-    @apply text-gray-400;
+    color: rgb(156 163 175);
   }
   
   /* Dark mode borders */
   .dark .border-gray-200 {
-    @apply border-dark-700;
+    border-color: rgb(51 65 85);
   }
   
   .dark .border-gray-300 {
-    @apply border-dark-600;
+    border-color: rgb(71 85 105);
   }
   
   .dark .border-gray-400 {
-    @apply border-dark-500;
+    border-color: rgb(100 116 139);
   }
   
   /* Dark mode form inputs */
   .dark input,
   .dark textarea,
   .dark select {
-    @apply bg-dark-800 border-dark-600 text-gray-100 placeholder-gray-400;
+    background-color: rgb(30 41 59);
+    border-color: rgb(71 85 105);
+    color: rgb(243 244 246);
+  }
+  
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: rgb(156 163 175);
   }
   
   .dark input:focus,
   .dark textarea:focus,
   .dark select:focus {
-    @apply border-blue-500 ring-blue-500 ring-opacity-50;
+    border-color: rgb(59 130 246);
+    --tw-ring-color: rgb(59 130 246);
+    --tw-ring-opacity: 0.5;
   }
   
   /* Dark mode hover states */
   .dark .hover\:bg-gray-50:hover {
-    @apply bg-dark-700;
+    background-color: rgb(51 65 85);
   }
   
   .dark .hover\:bg-gray-100:hover {
-    @apply bg-dark-600;
+    background-color: rgb(71 85 105);
   }
   
   .dark .hover\:bg-gray-200:hover {
-    @apply bg-dark-500;
+    background-color: rgb(100 116 139);
   }
   
   /* Dark mode gradient backgrounds */
   .dark .bg-gradient-to-br.from-blue-50 {
-    @apply from-dark-900;
+    --tw-gradient-from: rgb(15 23 42);
   }
   
   .dark .bg-gradient-to-br.to-teal-50 {
-    @apply to-dark-800;
+    --tw-gradient-to: rgb(30 41 59);
   }
   
   .dark .bg-gray-50 {
-    @apply bg-dark-800;
+    background-color: rgb(30 41 59);
   }
   
   .dark .bg-gray-100 {
-    @apply bg-dark-700;
+    background-color: rgb(51 65 85);
   }
   
   .dark .bg-gray-200 {
-    @apply bg-dark-600;
+    background-color: rgb(71 85 105);
   }
   
   /* Dark mode shadows */
   .dark .shadow-lg {
-    @apply shadow-dark-900/50;
+    box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.5), 0 4px 6px -4px rgb(15 23 42 / 0.5);
   }
   
   .dark .shadow-xl {
-    @apply shadow-dark-900/60;
+    box-shadow: 0 20px 25px -5px rgb(15 23 42 / 0.6), 0 10px 10px -5px rgb(15 23 42 / 0.6);
   }
   
   /* Dark mode backdrop blur */
   .dark .backdrop-blur-md {
-    @apply backdrop-blur-md bg-dark-800/80;
+    backdrop-filter: blur(12px);
+    background-color: rgb(30 41 59 / 0.8);
   }
   
   /* Dark mode button states */
@@ -143,31 +163,36 @@
   
   /* Dark mode modal backgrounds */
   .dark .bg-black.bg-opacity-50 {
-    @apply bg-black bg-opacity-70;
+    background-color: rgb(0 0 0);
+    --tw-bg-opacity: 0.7;
   }
   
   /* Dark mode navigation specific styles */
   .dark .navbar {
-    @apply bg-dark-800/95 backdrop-blur-md;
+    background-color: rgb(30 41 59 / 0.95);
+    backdrop-filter: blur(12px);
   }
   
   .dark .navbar.scrolled {
-    @apply bg-dark-800/95 shadow-lg;
+    background-color: rgb(30 41 59 / 0.95);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
   
   /* Dark mode accessibility improvements */
   .dark .focus\:ring-blue-500:focus {
-    @apply ring-blue-400 ring-opacity-50;
+    --tw-ring-color: rgb(96 165 250);
+    --tw-ring-opacity: 0.5;
   }
   
   .dark .focus\:ring-offset-2:focus {
-    @apply ring-offset-dark-800;
+    --tw-ring-offset-color: rgb(30 41 59);
   }
 }
 
 /* Smooth transitions for theme changes */
 * {
-  @apply transition-colors duration-300;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-duration: 300ms;
 }
 
 /* Enhanced theme toggle styling */
@@ -197,22 +222,23 @@
 /* High contrast mode support */
 @media (prefers-contrast: high) {
   .dark .bg-dark-800 {
-    @apply bg-black;
+    background-color: rgb(0 0 0);
   }
   
   .dark .text-gray-100 {
-    @apply text-white;
+    color: rgb(255 255 255);
   }
   
   .dark .border-dark-700 {
-    @apply border-white;
+    border-color: rgb(255 255 255);
   }
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   * {
-    @apply transition-none duration-0;
+    transition-property: none;
+    transition-duration: 0s;
   }
   
   .theme-toggle:hover {

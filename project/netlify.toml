@@ -1,6 +1,6 @@
 [build]
   publish = "project/dist"
-  command = "cd project && npm install && npm run build"
+  command = "cd project && npm install --production=false && npm run build"
   functions = "project/netlify/functions"
 
 [build.environment]

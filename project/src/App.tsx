@@ -131,8 +131,8 @@ function App() {
             {/* Legal pages */}
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
             <Route path="/terms" element={<TermsPage />} />
-            <Route path="/cookies" element={<CookiesPage />} />
-            <Route path="/accessibility" element={<AccessibilityPage />} />
+            {/* <Route path="/cookies" element={<CookiesPage />} /> */}
+            {/* <Route path="/accessibility" element={<AccessibilityPage />} /> */}
             
             {/* Error pages */}
             <Route path="/404" element={<NotFoundPage />} />
@@ -157,23 +157,23 @@ import ContactPage from './pages/ContactPage';
 import SafetyPage from './pages/SafetyPage';
 import EmailConfirmationPage from './pages/EmailConfirmationPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
-import AdminSetupGuide from './pages/AdminSetupGuide';
+import AdminSetupGuide from './components/AdminSetupGuide';
 import AdminLoginPage from './pages/AdminLoginPage';
-import DashboardPage from './pages/dashboard/DashboardPage';
+import DashboardPage from './pages/DashboardPage';
 import AdminDashboard from './pages/dashboard/AdminDashboard';
 import DriverDashboard from './pages/dashboard/DriverDashboard';
 import SupportWorkerDashboard from './pages/dashboard/SupportWorkerDashboard';
 import RiderDashboard from './pages/dashboard/RiderDashboard';
-import RegisterDriverPage from './pages/RegisterDriverPage';
-import RegisterSupportWorkerPage from './pages/RegisterSupportWorkerPage';
+import RegisterDriverPage from './pages/DriverRegistrationPage';
+import RegisterSupportWorkerPage from './pages/SupportWorkerRegistrationPage';
 import JoinPage from './pages/JoinPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ForgotPasswordPage from './pages/ResetPasswordPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
-import CookiesPage from './pages/CookiesPage';
-import AccessibilityPage from './pages/AccessibilityPage';
+// import CookiesPage from './pages/CookiesPage';
+// import AccessibilityPage from './pages/AccessibilityPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ServerErrorPage from './pages/ServerErrorPage';
 
