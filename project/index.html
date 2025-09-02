@@ -14,9 +14,55 @@
     <!-- Preconnect to external domains -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://images.pexels.com" />
+    <link rel="preconnect" href="https://maps.googleapis.com" />
+    <link rel="preconnect" href="https://js.stripe.com" />
+    <link rel="preconnect" href="https://m.stripe.network" />
     
-    <!-- Google Fonts -->
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    
+    <!-- Structured Data for Rich Snippets -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "AbleGo",
+      "description": "Inclusive transport services with trained companions for individuals with health challenges, disabilities, and vulnerabilities",
+      "url": "https://ablego.co.uk",
+      "logo": "https://ablego.co.uk/AbleGo.png",
+      "image": "https://ablego.co.uk/AbleGo.png",
+              "telephone": "01642 089 958",
+      "email": "hello@ablego.co.uk",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Middlesbrough",
+        "addressCountry": "GB"
+      },
+      "sameAs": [
+        "https://www.facebook.com/share/19oLrpnUBQ/",
+        "https://x.com/ablego",
+        "https://www.instagram.com/ablego_ventures",
+        "https://www.linkedin.com/in/ablego-ventures-57a8ba378/"
+      ],
+      "serviceType": "Accessible Transport Services",
+      "areaServed": {
+        "@type": "Country",
+        "name": "United Kingdom"
+      }
+    }
+    </script>
+    
+    <!-- Google Maps API -->
+    <script>
+      window.initGoogleMaps = function() {
+        window.googleMapsLoaded = true;
+        window.dispatchEvent(new Event('google-maps-loaded'));
+      };
+    </script>
+    <script async defer 
+      src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_MAPS_API_KEY%&libraries=places&callback=initGoogleMaps">
+    </script>
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
