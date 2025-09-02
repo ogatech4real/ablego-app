@@ -57,11 +57,7 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className={`navbar fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled 
-        ? 'bg-white/95 dark:bg-dark-800/95 backdrop-blur-md shadow-lg' 
-        : 'bg-transparent'
-    }`}>
+    <nav className={`navbar sticky top-0 z-50 w-full transition-all duration-300 bg-white/95 dark:bg-dark-800/95 backdrop-blur-md shadow-lg`}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
@@ -77,7 +73,7 @@ const Navbar: React.FC = () => {
               className="h-8 w-8 lg:h-10 lg:w-10 object-contain"
             />
             <span className={`text-xl lg:text-2xl font-bold transition-colors duration-300 ${
-              isScrolled ? 'text-gray-900 dark:text-gray-50' : 'text-white'
+              isScrolled ? 'text-gray-900 dark:text-gray-50' : 'text-gray-900 dark:text-gray-50'
             }`}>
               AbleGo
             </span>
@@ -91,9 +87,7 @@ const Navbar: React.FC = () => {
                   key={link.name}
                   href={link.href}
                   onClick={() => handleNavClick(link.href, link.isAnchor)}
-                  className={`font-medium transition-colors duration-300 hover:text-blue-600 dark:hover:text-blue-400 ${
-                    isScrolled ? 'text-gray-700 dark:text-gray-300' : 'text-white hover:text-blue-200'
-                  }`}
+                  className={`font-medium transition-colors duration-300 hover:text-blue-600 dark:hover:text-blue-400 text-gray-700 dark:text-gray-300`}
                 >
                   {link.name}
                 </a>
@@ -101,9 +95,7 @@ const Navbar: React.FC = () => {
                 <Link
                   key={link.name}
                   to={link.href}
-                  className={`font-medium transition-colors duration-300 hover:text-blue-600 dark:hover:text-blue-400 ${
-                    isScrolled ? 'text-gray-700 dark:text-gray-300' : 'text-white hover:text-blue-200'
-                  } ${location.pathname === link.href ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}
+                  className={`font-medium transition-colors duration-300 hover:text-blue-600 dark:hover:text-blue-400 text-gray-700 dark:text-gray-300 ${location.pathname === link.href ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}
                 >
                   {link.name}
                 </Link>
@@ -159,9 +151,7 @@ const Navbar: React.FC = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className={`md:hidden p-2 rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-dark-800 ${
-              isScrolled ? 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-700' : 'text-white hover:bg-white/10'
-            }`}
+            className={`md:hidden p-2 rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-dark-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-700`}
             aria-label="Toggle menu"
           >
             {isMenuOpen ? (
