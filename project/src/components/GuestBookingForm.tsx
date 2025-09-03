@@ -200,30 +200,9 @@ const GuestBookingForm: React.FC = () => {
     setDropoffDetails(details || null);
   };
 
-  const handlePickupTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedTime = new Date(e.target.value);
-    const validation = pricingService.validatePickupTime(selectedTime);
-    
-    if (validation.valid) {
-      setPickupTime(selectedTime);
-      setPickupTimeError(null);
-    } else {
-      setPickupTimeError(validation.error || 'Invalid pickup time');
-    }
-  };
-
   const handleGuestInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setGuestInfo(prev => ({ ...prev, [name]: value }));
-  };
-
-  const formatDateTimeLocal = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   const canProceedToGuestInfo = () => {
@@ -661,25 +640,24 @@ const GuestBookingForm: React.FC = () => {
 
             {/* Pickup Time */}
             <div className="mb-8">
-              <label className="block text-sm font-medium text-gray-700 mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Pickup Date & Time *
               </label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-blue-500" />
-                <input
-                  type="datetime-local"
-                  value={formatDateTimeLocal(pickupTime)}
-                  onChange={handlePickupTimeChange}
-                  min={formatDateTimeLocal(pricingService.getMinimumPickupTime())}
-                  max={formatDateTimeLocal(pricingService.getMaximumPickupTime())}
-                  step="900"
-                  className={`w-full pl-12 pr-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 text-lg transition-all duration-300 ${
-                    pickupTimeError 
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-                      : 'border-gray-200 focus:border-blue-500 focus:ring-blue-200'
-                  }`}
-                />
-              </div>
+              <p className="text-sm text-gray-500 mb-4 flex items-center">
+                <Clock className="w-4 h-4 mr-2 text-blue-500" />
+                Book ahead to get 10% discount.
+              </p>
+              <DateTimePicker
+                value={pickupTime}
+                onChange={(date: Date) => {
+                  setPickupTime(date);
+                  setPickupTimeError(null);
+                }}
+                min={pricingService.getMinimumPickupTime()}
+                max={pricingService.getMaximumPickupTime()}
+                label=""
+                className="w-full"
+              />
               
               <div className="mt-2 min-h-[1.25rem]">
                 {pickupTimeError ? (
