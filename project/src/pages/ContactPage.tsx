@@ -17,7 +17,7 @@ const ContactPage: React.FC = () => {
       </Helmet>
 
       {/* Hero Section */}
-      <section className="hero-section relative py-20 bg-gradient-to-br from-blue-50 via-white to-teal-50 dark:from-dark-900 dark:via-dark-800 dark:to-dark-700 overflow-hidden">
+      <section className="hero-section relative py-20 bg-gradient-to-br from-blue-50 via-white to-teal-50 dark:from-dark-900 dark:via-dark-800 dark:to-dark-700 overflow-hidden pt-20 lg:pt-24">
         <div className="container mx-auto px-6">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 dark:text-gray-50 mb-6">

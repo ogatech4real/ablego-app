@@ -9,11 +9,11 @@ const TermsPage: React.FC = () => {
         <meta name="description" content="Terms of service and conditions for using AbleGo transport services." />
       </Helmet>
       
-      <div className="min-h-screen bg-gray-50 dark:bg-dark-900 py-20">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-900 pt-20 lg:pt-24 pb-20">
         <div className="container mx-auto px-6">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-16">
-              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-50 mb-6">
+              <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 dark:text-gray-50 mb-6">
                 Terms of Service
               </h1>
               <p className="text-xl text-gray-600 dark:text-gray-300">

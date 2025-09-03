@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { gsap } from 'gsap';
-import { Menu, X, Navigation, Users, Shield } from 'lucide-react';
+import { Menu, X, Navigation, Users, Shield, Bell } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import NotificationCenter from './NotificationCenter';
+import { useNotifications } from '../hooks/useNotifications';
 import { scrollToTop, scrollToActionZone } from '../utils/scrollUtils';
 
 const Navbar: React.FC = () => {
@@ -11,6 +11,7 @@ const Navbar: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const { user, isAdmin } = useAuth();
+  const { unreadCount } = useNotifications();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -57,7 +58,7 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className={`navbar relative z-50 w-full transition-all duration-300 bg-white/95 dark:bg-dark-800/95 backdrop-blur-md shadow-lg`}>
+    <nav className={`navbar fixed top-0 left-0 right-0 z-[9999] w-full transition-all duration-300 bg-white/95 dark:bg-dark-800/95 backdrop-blur-md shadow-lg border-b border-gray-200 dark:border-dark-700`}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
@@ -105,7 +106,17 @@ const Navbar: React.FC = () => {
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <>
-                <NotificationCenter />
+                {/* Simple Notification Bell */}
+                <div className="relative">
+                  <button className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors duration-200">
+                    <Bell className="w-6 h-6" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
                 <Link 
                   to="/dashboard"
                   className="px-4 py-2 text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 rounded-full font-semibold hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
